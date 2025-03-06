@@ -4,20 +4,63 @@ import { Link as RouterLink } from 'react-router-dom';
 
 const Navbar = () => {
   return (
-    <AppBar position="static">
+    <AppBar position="fixed">
       <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          ClassAttend
+        <Typography 
+          variant="h6" 
+          component={RouterLink} 
+          to="/" 
+          sx={{ 
+            flexGrow: 1, 
+            textDecoration: 'none', 
+            color: '#DEA514', // New Saffron
+            fontWeight: 'bold',
+            fontSize: '1.5rem',
+            '&:hover': {
+              color: '#B88A10', // Darker Saffron
+            }
+          }}
+        >
+          TrueAttend
         </Typography>
         <Box>
-          <Button color="inherit" component={RouterLink} to="/">
-            Home
+          <Button 
+            component={RouterLink} 
+            to="/about"
+            sx={{ 
+              color: '#2C2C2C',
+              '&:hover': {
+                color: '#DEA514', // New Saffron
+              }
+            }}
+          >
+            About
           </Button>
-          <Button color="inherit" component={RouterLink} to="/login">
+          <Button 
+            component={RouterLink} 
+            to="/login"
+            sx={{ 
+              color: '#2C2C2C',
+              '&:hover': {
+                color: '#DEA514', // New Saffron
+              }
+            }}
+          >
             Login
           </Button>
-          <Button color="inherit" component={RouterLink} to="/register">
-            Register
+          <Button 
+            variant="contained"
+            component={RouterLink} 
+            to="/register"
+            sx={{ 
+              ml: 2,
+              bgcolor: '#DEA514', // New Saffron
+              '&:hover': {
+                bgcolor: '#B88A10', // Darker Saffron
+              }
+            }}
+          >
+            Get Started
           </Button>
         </Box>
       </Toolbar>
