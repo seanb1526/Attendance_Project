@@ -5,6 +5,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
 import AuthLanding from './components/Auth/AuthLanding';
+import StudentDashboard from './components/Student/StudentDashboard';
+import FacultyDashboard from './components/Faculty/FacultyDashboard';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -74,10 +76,21 @@ function App() {
       <CssBaseline />
       <Router>
         <div>
-          <Navbar />
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/auth" element={<AuthLanding />} />
+            <Route path="/faculty/*" element={<FacultyDashboard />} />
+            <Route
+              path="*"
+              element={
+                <>
+                  <Navbar />
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/auth" element={<AuthLanding />} />
+                    <Route path="/student/dashboard" element={<StudentDashboard />} />
+                  </Routes>
+                </>
+              }
+            />
           </Routes>
         </div>
       </Router>

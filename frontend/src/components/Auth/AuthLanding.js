@@ -1,6 +1,6 @@
 import React from 'react';
 import { Container, Typography, Box, Button, Paper, Grid, useTheme, useMediaQuery } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import SchoolIcon from '@mui/icons-material/School';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 
@@ -92,6 +92,8 @@ const AuthLanding = () => {
                 <Button 
                   variant="contained" 
                   fullWidth={isMobile}
+                  component={RouterLink}
+                  to="/faculty/dashboard"
                 >
                   Sign In
                 </Button>
@@ -155,6 +157,8 @@ const AuthLanding = () => {
                 <Button 
                   variant="contained" 
                   fullWidth={isMobile}
+                  component={RouterLink}
+                  to="/student/dashboard"
                 >
                   Sign In
                 </Button>

@@ -1,0 +1,198 @@
+import React, { useState } from 'react';
+import { 
+  Box, 
+  Drawer, 
+  AppBar, 
+  Toolbar, 
+  List, 
+  Typography, 
+  Divider, 
+  IconButton,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  useTheme,
+  useMediaQuery,
+  Container
+} from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import EventIcon from '@mui/icons-material/Event';
+import AddBoxIcon from '@mui/icons-material/AddBox';
+import SchoolIcon from '@mui/icons-material/School';
+import ClassIcon from '@mui/icons-material/Class';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+
+// Import sub-components (we'll create these next)
+import Dashboard from './Dashboard';
+import EventsList from './Events/EventsList';
+import AddEvent from './Events/AddEvent';
+import ClassesList from './Classes/ClassesList';
+import AddClass from './Classes/AddClass';
+import ClassDetails from './Classes/ClassDetails';
+
+const drawerWidth = 240;
+
+const menuItems = [
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/faculty/dashboard' },
+  { text: 'Events', icon: <EventIcon />, path: '/faculty/events' },
+  { text: 'Add Event', icon: <AddBoxIcon />, path: '/faculty/events/add' },
+  { text: 'Classes', icon: <ClassIcon />, path: '/faculty/classes' },
+  { text: 'Add Class', icon: <SchoolIcon />, path: '/faculty/classes/add' },
+];
+
+const FacultyDashboard = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  const drawer = (
+    <Box sx={{ bgcolor: '#FFFFFF', height: '100%' }}>
+      <Toolbar sx={{ bgcolor: '#DEA514' }}>
+        <Typography variant="h6" sx={{ color: '#FFFFFF' }}>
+          Faculty Portal
+        </Typography>
+      </Toolbar>
+      <Divider />
+      <List>
+        {menuItems.map((item) => (
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              selected={location.pathname === item.path}
+              onClick={() => {
+                navigate(item.path);
+                if (isMobile) handleDrawerToggle();
+              }}
+              sx={{
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(222, 165, 20, 0.08)',
+                  borderRight: 3,
+                  borderColor: '#DEA514',
+                  '&:hover': {
+                    bgcolor: 'rgba(222, 165, 20, 0.12)',
+                  },
+                },
+                '&:hover': {
+                  bgcolor: 'rgba(222, 165, 20, 0.04)',
+                },
+              }}
+            >
+              <ListItemIcon sx={{ 
+                color: location.pathname === item.path ? '#DEA514' : 'inherit'
+              }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.text} 
+                sx={{
+                  color: location.pathname === item.path ? '#DEA514' : '#2C2C2C',
+                }}
+              />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex' }}>
+      <AppBar
+        position="fixed"
+        sx={{
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          ml: { sm: `${drawerWidth}px` },
+          bgcolor: '#FFFFFF',
+          boxShadow: 1,
+        }}
+      >
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ 
+              mr: 2, 
+              display: { sm: 'none' },
+              color: '#DEA514'
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" noWrap component="div" sx={{ color: '#2C2C2C' }}>
+            TrueAttend
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
+      <Box
+        component="nav"
+        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+      >
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: true, // Better mobile performance
+          }}
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth 
+            },
+          }}
+        >
+          {drawer}
+        </Drawer>
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth 
+            },
+          }}
+          open
+        >
+          {drawer}
+        </Drawer>
+      </Box>
+
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          bgcolor: '#F5F5DC',
+          minHeight: '100vh',
+        }}
+      >
+        <Toolbar /> {/* This creates space for the AppBar */}
+        <Container maxWidth="lg">
+          <Routes>
+            <Route index element={<Dashboard />} />
+            <Route path="events" element={<EventsList />} />
+            <Route path="events/add" element={<AddEvent />} />
+            <Route path="classes" element={<ClassesList />} />
+            <Route path="classes/add" element={<AddClass />} />
+            <Route path="classes/:id" element={<ClassDetails />} />
+          </Routes>
+        </Container>
+      </Box>
+    </Box>
+  );
+};
+
+export default FacultyDashboard;
