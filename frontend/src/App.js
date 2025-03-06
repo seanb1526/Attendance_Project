@@ -4,6 +4,7 @@ import { ThemeProvider, createTheme } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
+import AuthLanding from './components/Auth/AuthLanding';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -76,7 +77,7 @@ function App() {
           <Navbar />
           <Routes>
             <Route path="/" element={<Home />} />
-            {/* Add more routes here as we create them */}
+            <Route path="/auth" element={<AuthLanding />} />
           </Routes>
         </div>
       </Router>

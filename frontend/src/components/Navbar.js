@@ -37,21 +37,9 @@ const Navbar = () => {
             About
           </Button>
           <Button 
-            component={RouterLink} 
-            to="/login"
-            sx={{ 
-              color: '#2C2C2C',
-              '&:hover': {
-                color: '#DEA514', // New Saffron
-              }
-            }}
-          >
-            Login
-          </Button>
-          <Button 
             variant="contained"
             component={RouterLink} 
-            to="/register"
+            to="/auth"
             sx={{ 
               ml: 2,
               bgcolor: '#DEA514', // New Saffron
@@ -60,7 +48,7 @@ const Navbar = () => {
               }
             }}
           >
-            Get Started
+            Sign In / Register
           </Button>
         </Box>
       </Toolbar>
