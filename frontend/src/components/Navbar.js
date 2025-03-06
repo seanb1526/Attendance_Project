@@ -1,56 +1,144 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import React, { useState } from 'react';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Button, 
+  Box, 
+  useTheme, 
+  useMediaQuery,
+  IconButton,
+  Drawer,
+  List,
+  ListItem,
+  ListItemText
+} from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
 import { Link as RouterLink } from 'react-router-dom';
 
 const Navbar = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  const menuItems = [
+    { text: 'About', path: '/about' },
+    { text: 'Sign In / Register', path: '/auth' }
+  ];
+
+  const drawer = (
+    <Box sx={{ width: 250, pt: 2 }}>
+      <List>
+        {menuItems.map((item) => (
+          <ListItem 
+            key={item.text} 
+            component={RouterLink} 
+            to={item.path}
+            onClick={handleDrawerToggle}
+            sx={{
+              color: '#2C2C2C',
+              '&:hover': {
+                backgroundColor: 'rgba(222, 165, 20, 0.08)',
+              }
+            }}
+          >
+            <ListItemText 
+              primary={item.text}
+              sx={{
+                color: item.text === 'Sign In / Register' ? '#DEA514' : 'inherit',
+                fontWeight: item.text === 'Sign In / Register' ? 'bold' : 'normal',
+              }}
+            />
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
+
   return (
     <AppBar position="fixed">
-      <Toolbar>
+      <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography 
           variant="h6" 
           component={RouterLink} 
           to="/" 
           sx={{ 
-            flexGrow: 1, 
             textDecoration: 'none', 
-            color: '#DEA514', // New Saffron
+            color: '#DEA514',
             fontWeight: 'bold',
-            fontSize: '1.5rem',
+            fontSize: isMobile ? '1.2rem' : '1.5rem',
             '&:hover': {
-              color: '#B88A10', // Darker Saffron
+              color: '#B88A10',
             }
           }}
         >
           TrueAttend
         </Typography>
-        <Box>
-          <Button 
-            component={RouterLink} 
-            to="/about"
-            sx={{ 
-              color: '#2C2C2C',
-              '&:hover': {
-                color: '#DEA514', // New Saffron
-              }
-            }}
+
+        {isMobile ? (
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ color: '#DEA514' }}
           >
-            About
-          </Button>
-          <Button 
-            variant="contained"
-            component={RouterLink} 
-            to="/auth"
-            sx={{ 
-              ml: 2,
-              bgcolor: '#DEA514', // New Saffron
-              '&:hover': {
-                bgcolor: '#B88A10', // Darker Saffron
-              }
-            }}
-          >
-            Sign In / Register
-          </Button>
-        </Box>
+            <MenuIcon />
+          </IconButton>
+        ) : (
+          <Box>
+            <Button 
+              component={RouterLink} 
+              to="/about"
+              sx={{ 
+                color: '#2C2C2C',
+                '&:hover': {
+                  color: '#DEA514',
+                }
+              }}
+            >
+              About
+            </Button>
+            <Button 
+              variant="contained"
+              component={RouterLink} 
+              to="/auth"
+              sx={{ 
+                ml: 2,
+                bgcolor: '#DEA514',
+                '&:hover': {
+                  bgcolor: '#B88A10',
+                }
+              }}
+            >
+              Sign In / Register
+            </Button>
+          </Box>
+        )}
+
+        <Drawer
+          variant="temporary"
+          anchor="right"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: true, // Better mobile performance
+          }}
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: 250,
+              backgroundColor: '#FFFFFF',
+            },
+          }}
+        >
+          {drawer}
+        </Drawer>
       </Toolbar>
     </AppBar>
   );

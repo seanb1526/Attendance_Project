@@ -1,32 +1,40 @@
 import React from 'react';
-import { Container, Typography, Box, Button, Grid, Paper } from '@mui/material';
+import { Container, Typography, Box, Button, Grid, Paper, useTheme, useMediaQuery } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 
 const Home = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <Box>
       {/* Hero Section */}
       <Box 
         sx={{ 
           bgcolor: '#F5F5DC', // Soft Beige background
-          pt: 15, // Increased to account for fixed navbar
-          pb: 10,
+          pt: isMobile ? 12 : 15, // Increased to account for fixed navbar
+          pb: isMobile ? 6 : 10,
         }}
       >
         <Container maxWidth="lg">
-          <Grid container spacing={6} alignItems="center">
+          <Grid container spacing={isMobile ? 4 : 6} alignItems="center">
             <Grid item xs={12} md={6}>
               <Typography 
                 variant="h1" 
                 component="h1" 
                 gutterBottom
                 sx={{ 
-                  fontSize: { xs: '2.5rem', md: '3.5rem' },
+                  fontSize: { 
+                    xs: '2rem',
+                    sm: '2.5rem', 
+                    md: '3.5rem' 
+                  },
                   fontWeight: 'bold',
                   color: '#2C2C2C',
+                  textAlign: isMobile ? 'center' : 'left',
                   '& span': {
                     color: '#DEA514', // New Saffron
                   }
@@ -41,16 +49,27 @@ const Home = () => {
                   mb: 4,
                   color: '#2C2C2C',
                   opacity: 0.85,
+                  fontSize: { 
+                    xs: '1rem',
+                    sm: '1.25rem' 
+                  },
+                  textAlign: isMobile ? 'center' : 'left',
                 }}
               >
                 Transform your event attendance tracking with QR codes and automated processing. Perfect for managing extra credit events.
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2,
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'flex-start',
+              }}>
                 <Button
                   variant="contained"
                   size="large"
                   component={RouterLink}
                   to="/register"
+                  fullWidth={isMobile}
                 >
                   Get Started
                 </Button>
@@ -59,6 +78,7 @@ const Home = () => {
                   size="large"
                   component={RouterLink}
                   to="/about"
+                  fullWidth={isMobile}
                 >
                   Learn More
                 </Button>
@@ -72,15 +92,20 @@ const Home = () => {
       </Box>
 
       {/* Features Section */}
-      <Box sx={{ py: 10, bgcolor: '#FFFFFF' }}>
+      <Box sx={{ 
+        py: isMobile ? 6 : 10, 
+        bgcolor: '#FFFFFF',
+        px: isMobile ? 2 : 0
+      }}>
         <Container maxWidth="lg">
           <Typography
             variant="h2"
             align="center"
             sx={{ 
-              mb: 8,
+              mb: isMobile ? 4 : 8,
               color: '#2C2C2C',
               fontWeight: 600,
+              fontSize: isMobile ? '2rem' : '3rem',
               '& span': {
                 color: '#DEA514', // New Saffron
               }
@@ -88,7 +113,7 @@ const Home = () => {
           >
             Why Choose <span>TrueAttend</span>?
           </Typography>
-          <Grid container spacing={4}>
+          <Grid container spacing={isMobile ? 3 : 4}>
             {[
               {
                 icon: <QrCodeScannerIcon sx={{ fontSize: 60, color: '#DEA514', mb: 2 }} />,
