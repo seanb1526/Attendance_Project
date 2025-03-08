@@ -91,6 +91,7 @@ const ClassesList = () => {
                 cursor: 'pointer',
                 transition: 'transform 0.2s, box-shadow 0.2s',
                 bgcolor: '#FFFFFF',
+                minHeight: '200px',
                 '&:hover': {
                   transform: 'translateY(-4px)',
                   boxShadow: 3,
