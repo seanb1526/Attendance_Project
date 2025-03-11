@@ -7,6 +7,7 @@ import Home from './components/Home';
 import AuthLanding from './components/Auth/AuthLanding';
 import StudentDashboard from './components/Student/StudentDashboard';
 import FacultyDashboard from './components/Faculty/FacultyDashboard';
+import About from './components/About/About';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -85,6 +86,7 @@ function App() {
                   <Navbar />
                   <Routes>
                     <Route path="/" element={<Home />} />
+                    <Route path="/about" element={<About />} />
                     <Route path="/auth" element={<AuthLanding />} />
                     <Route path="/student/dashboard" element={<StudentDashboard />} />
                   </Routes>
