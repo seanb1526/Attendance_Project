@@ -55,10 +55,46 @@ const FacultyDashboard = () => {
 
   const drawer = (
     <Box sx={{ bgcolor: '#FFFFFF', height: '100%' }}>
-      <Toolbar sx={{ bgcolor: '#DEA514' }}>
-        <Typography variant="h6" sx={{ color: '#FFFFFF' }}>
-          Faculty Portal
-        </Typography>
+      <Toolbar 
+        sx={{ 
+          bgcolor: '#FFFFFF',
+          borderBottom: '1px solid rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          py: 2
+        }}
+      >
+        <Box>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              color: '#2C2C2C',
+              fontWeight: 'bold',
+              lineHeight: 1.2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              cursor: 'pointer',
+              '&:hover': {
+                opacity: 0.8
+              }
+            }}
+            onClick={() => navigate('/')}
+          >
+            <span style={{ color: '#DEA514' }}>TrueAttend</span>
+          </Typography>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: '#666',
+              display: 'block',
+              mt: 0.5
+            }}
+          >
+            Salisbury University
+          </Typography>
+        </Box>
       </Toolbar>
       <Divider />
       <List>
@@ -110,10 +146,11 @@ const FacultyDashboard = () => {
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
           bgcolor: '#FFFFFF',
-          boxShadow: 1,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ minHeight: '64px' }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
@@ -127,9 +164,54 @@ const FacultyDashboard = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ color: '#2C2C2C' }}>
-            TrueAttend
-          </Typography>
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <Typography 
+              variant="h5" 
+              noWrap 
+              component="div" 
+              sx={{ 
+                color: '#2C2C2C',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
+              Faculty Portal
+            </Typography>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: 2,
+            borderLeft: '1px solid rgba(0,0,0,0.08)',
+            pl: 2
+          }}>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: '#666',
+                display: { xs: 'none', sm: 'block' }
+              }}
+            >
+              Welcome, Professor
+            </Typography>
+            <Box 
+              sx={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%',
+                bgcolor: '#DEA514',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                fontWeight: 'bold'
+              }}
+            >
+              P
+            </Box>
+          </Box>
         </Toolbar>
       </AppBar>
 
@@ -183,6 +265,7 @@ const FacultyDashboard = () => {
         <Container maxWidth="lg">
           <Routes>
             <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="events" element={<EventsList />} />
             <Route path="events/add" element={<AddEvent />} />
             <Route path="classes" element={<ClassesList />} />

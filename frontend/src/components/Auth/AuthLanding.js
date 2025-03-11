@@ -11,19 +11,23 @@ const AuthLanding = () => {
 
   return (
     <Box sx={{ 
-      pt: isMobile ? 12 : 15, 
-      pb: isMobile ? 6 : 8, 
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
       bgcolor: '#F5F5DC',
-      px: isMobile ? 2 : 0
+      px: isMobile ? 2 : 0,
+      py: 6
     }}>
       <Container maxWidth="lg">
         <Typography
           variant="h2"
           align="center"
           sx={{ 
-            mb: 4, 
+            mb: 3, 
             color: '#2C2C2C',
-            fontSize: isMobile ? '2rem' : '3rem'
+            fontSize: isMobile ? '2rem' : '2.5rem',
+            fontWeight: 'bold'
           }}
         >
           Welcome to TrueAttend
@@ -32,20 +36,20 @@ const AuthLanding = () => {
           variant="h5"
           align="center"
           sx={{ 
-            mb: isMobile ? 4 : 8, 
+            mb: 5, 
             color: '#2C2C2C', 
             opacity: 0.85,
-            fontSize: isMobile ? '1.1rem' : '1.5rem'
+            fontSize: isMobile ? '1.1rem' : '1.3rem'
           }}
         >
           Choose your role to continue
         </Typography>
         
-        <Grid container spacing={isMobile ? 3 : 4}>
+        <Grid container spacing={4} sx={{ maxWidth: '1100px', mx: 'auto' }}>
           <Grid item xs={12} md={6}>
             <Paper
               sx={{
-                p: isMobile ? 3 : 4,
+                p: 4,
                 textAlign: 'center',
                 height: '100%',
                 cursor: 'pointer',
@@ -58,17 +62,17 @@ const AuthLanding = () => {
               }}
             >
               <AccountBoxIcon sx={{ 
-                fontSize: isMobile ? 40 : 60, 
+                fontSize: 56, 
                 color: '#DEA514' 
               }} />
               <Typography 
                 variant="h5" 
                 component="h2" 
                 sx={{ 
-                  mt: 2, 
+                  mt: 3, 
                   mb: 2, 
                   color: '#2C2C2C',
-                  fontSize: isMobile ? '1.25rem' : '1.5rem'
+                  fontSize: '1.5rem'
                 }}
               >
                 Faculty
@@ -76,17 +80,18 @@ const AuthLanding = () => {
               <Typography 
                 color="text.secondary" 
                 sx={{ 
-                  mb: 3,
-                  fontSize: isMobile ? '0.9rem' : '1rem'
+                  mb: 4,
+                  fontSize: '1rem',
+                  maxWidth: '320px',
+                  mx: 'auto'
                 }}
               >
-                Access your dashboard to manage events, track attendance, and generate reports.
+                Access your dashboard to manage events and track attendance.
               </Typography>
               <Box sx={{ 
-                mt: 2,
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
-                gap: isMobile ? 1 : 2,
+                gap: 2,
                 justifyContent: 'center'
               }}>
                 <Button 
@@ -94,12 +99,26 @@ const AuthLanding = () => {
                   fullWidth={isMobile}
                   component={RouterLink}
                   to="/faculty/dashboard"
+                  sx={{
+                    bgcolor: '#DEA514',
+                    '&:hover': {
+                      bgcolor: '#B88A10',
+                    }
+                  }}
                 >
                   Sign In
                 </Button>
                 <Button 
                   variant="outlined"
                   fullWidth={isMobile}
+                  sx={{
+                    borderColor: '#DEA514',
+                    color: '#DEA514',
+                    '&:hover': {
+                      borderColor: '#B88A10',
+                      color: '#B88A10',
+                    }
+                  }}
                 >
                   Register
                 </Button>
@@ -110,7 +129,7 @@ const AuthLanding = () => {
           <Grid item xs={12} md={6}>
             <Paper
               sx={{
-                p: isMobile ? 3 : 4,
+                p: 4,
                 textAlign: 'center',
                 height: '100%',
                 cursor: 'pointer',
@@ -123,17 +142,17 @@ const AuthLanding = () => {
               }}
             >
               <SchoolIcon sx={{ 
-                fontSize: isMobile ? 40 : 60, 
+                fontSize: 56,
                 color: '#DEA514' 
               }} />
               <Typography 
                 variant="h5" 
                 component="h2" 
                 sx={{ 
-                  mt: 2, 
+                  mt: 3, 
                   mb: 2, 
                   color: '#2C2C2C',
-                  fontSize: isMobile ? '1.25rem' : '1.5rem'
+                  fontSize: '1.5rem'
                 }}
               >
                 Student
@@ -141,30 +160,45 @@ const AuthLanding = () => {
               <Typography 
                 color="text.secondary" 
                 sx={{ 
-                  mb: 3,
-                  fontSize: isMobile ? '0.9rem' : '1rem'
+                  mb: 4,
+                  fontSize: '1rem',
+                  maxWidth: '320px',
+                  mx: 'auto'
                 }}
               >
-                Sign in to view and register for events, and manage your attendance records.
+                Sign in to view events and manage your attendance records.
               </Typography>
               <Box sx={{ 
-                mt: 2,
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
-                gap: isMobile ? 1 : 2,
+                gap: 2,
                 justifyContent: 'center'
               }}>
                 <Button 
-                  variant="contained" 
+                  variant="contained"
                   fullWidth={isMobile}
                   component={RouterLink}
                   to="/student/dashboard"
+                  sx={{
+                    bgcolor: '#DEA514',
+                    '&:hover': {
+                      bgcolor: '#B88A10',
+                    }
+                  }}
                 >
                   Sign In
                 </Button>
                 <Button 
                   variant="outlined"
                   fullWidth={isMobile}
+                  sx={{
+                    borderColor: '#DEA514',
+                    color: '#DEA514',
+                    '&:hover': {
+                      borderColor: '#B88A10',
+                      color: '#B88A10',
+                    }
+                  }}
                 >
                   Register
                 </Button>
