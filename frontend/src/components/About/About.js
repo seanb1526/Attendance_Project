@@ -12,7 +12,7 @@ const About = () => {
     {
       icon: <CheckCircleOutlineIcon sx={{ fontSize: 40, color: '#DEA514' }} />,
       title: 'Accurate Attendance',
-      description: 'Streamlined attendance tracking system designed for Syracuse University faculty and students.'
+      description: 'Streamlined attendance tracking system designed for Salisbury University faculty and students.'
     },
     {
       icon: <SecurityIcon sx={{ fontSize: 40, color: '#DEA514' }} />,
@@ -55,7 +55,7 @@ const About = () => {
               mb: 2
             }}
           >
-            Simplifying Attendance Management at Syracuse University
+            Simplifying Attendance Management at Salisbury University
           </Typography>
           <Typography
             color="text.secondary"
@@ -123,7 +123,7 @@ const About = () => {
               fontSize: '0.9rem'
             }}
           >
-            © 2024 TrueAttend - Syracuse University
+            © 2024 TrueAttend - Salisbury University
           </Typography>
         </Box>
       </Container>
