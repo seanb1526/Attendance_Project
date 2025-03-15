@@ -128,6 +128,7 @@ const AuthLanding = () => {
 
           <Grid item xs={12} md={6}>
             <Paper
+              onClick={() => navigate('/auth/student/register')}
               sx={{
                 p: 4,
                 textAlign: 'center',

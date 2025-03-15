@@ -8,6 +8,8 @@ import AuthLanding from './components/Auth/AuthLanding';
 import StudentDashboard from './components/Student/StudentDashboard';
 import FacultyDashboard from './components/Faculty/FacultyDashboard';
 import About from './components/About/About';
+import StudentRegister from './components/Auth/StudentRegister';
+import EmailVerification from './components/Auth/EmailVerification';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -89,6 +91,8 @@ function App() {
                     <Route path="/about" element={<About />} />
                     <Route path="/auth" element={<AuthLanding />} />
                     <Route path="/student/dashboard" element={<StudentDashboard />} />
+                    <Route path="/auth/student/register" element={<StudentRegister />} />
+                    <Route path="/verify-email" element={<EmailVerification />} />
                   </Routes>
                 </>
               }
