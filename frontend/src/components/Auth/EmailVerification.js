@@ -25,11 +25,16 @@ const EmailVerification = () => {
         // Call our backend API to verify the token
         const response = await axios.get(`/api/verify-email/?token=${token}`);
         
+        // Store the token in localStorage for authentication
+        localStorage.setItem('authToken', token);
+        
         setStatus('success');
         setMessage(response.data.message || 'Email verified successfully!');
         
-        // Redirect to login after 3 seconds
-        setTimeout(() => navigate('/auth'), 3000);
+        // Replace the current history entry instead of adding to it
+        setTimeout(() => {
+          navigate('/student/dashboard', { replace: true });
+        }, 3000);
       } catch (error) {
         setStatus('error');
         setMessage(

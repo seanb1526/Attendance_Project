@@ -9,4 +9,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('register/', views.register_student, name='register-student'),
     path('verify-email/', views.verify_email, name='verify-email'),
+    path('student/signin/', views.student_signin, name='student-signin'),
 ] 

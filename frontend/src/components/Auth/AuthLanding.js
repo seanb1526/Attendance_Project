@@ -128,12 +128,10 @@ const AuthLanding = () => {
 
           <Grid item xs={12} md={6}>
             <Paper
-              onClick={() => navigate('/auth/student/register')}
               sx={{
                 p: 4,
                 textAlign: 'center',
                 height: '100%',
-                cursor: 'pointer',
                 bgcolor: '#FFFFFF',
                 transition: 'transform 0.2s, box-shadow 0.2s',
                 '&:hover': {
@@ -179,7 +177,7 @@ const AuthLanding = () => {
                   variant="contained"
                   fullWidth={isMobile}
                   component={RouterLink}
-                  to="/student/dashboard"
+                  to="/auth/student/signin"
                   sx={{
                     bgcolor: '#DEA514',
                     '&:hover': {
@@ -192,6 +190,8 @@ const AuthLanding = () => {
                 <Button 
                   variant="outlined"
                   fullWidth={isMobile}
+                  component={RouterLink}
+                  to="/auth/student/register"
                   sx={{
                     borderColor: '#DEA514',
                     color: '#DEA514',

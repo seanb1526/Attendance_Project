@@ -14,12 +14,16 @@ import {
   ListItemText
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 
 const Navbar = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  
+  // Check if we're on the student dashboard
+  const isStudentDashboard = location.pathname === '/student/dashboard';
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -103,20 +107,22 @@ const Navbar = () => {
             >
               About
             </Button>
-            <Button 
-              variant="contained"
-              component={RouterLink} 
-              to="/auth"
-              sx={{ 
-                ml: 2,
-                bgcolor: '#DEA514',
-                '&:hover': {
-                  bgcolor: '#B88A10',
-                }
-              }}
-            >
-              Sign In / Register
-            </Button>
+            {!isStudentDashboard && (
+              <Button 
+                variant="contained"
+                component={RouterLink} 
+                to="/auth"
+                sx={{ 
+                  ml: 2,
+                  bgcolor: '#DEA514',
+                  '&:hover': {
+                    bgcolor: '#B88A10',
+                  }
+                }}
+              >
+                Sign In / Register
+              </Button>
+            )}
           </Box>
         )}
 

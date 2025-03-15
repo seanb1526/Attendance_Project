@@ -37,8 +37,6 @@ const StudentRegister = () => {
     setError('');
     setSuccess('');
     
-    console.log('Submitting form data:', formData);
-
     try {
       const response = await axios.post('/api/register/', {
         first_name: formData.firstName,
@@ -47,10 +45,9 @@ const StudentRegister = () => {
         email: formData.email,
         school: formData.school,
       });
-      console.log('Response:', response.data);
 
-      setSuccess(response.data.message);
-      // Clear form
+      setSuccess(response.data.message || 'Registration successful. Please check your email.');
+      // Clear form but stay on the page
       setFormData({
         firstName: '',
         lastName: '',
@@ -58,6 +55,7 @@ const StudentRegister = () => {
         email: '',
         school: '',
       });
+      // Remove any navigation here - let the user read the success message
     } catch (error) {
       console.error('Registration error:', error.response?.data || error);
       setError(error.response?.data?.email?.[0] || 'Registration failed. Please try again.');

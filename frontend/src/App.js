@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
@@ -10,6 +10,7 @@ import FacultyDashboard from './components/Faculty/FacultyDashboard';
 import About from './components/About/About';
 import StudentRegister from './components/Auth/StudentRegister';
 import EmailVerification from './components/Auth/EmailVerification';
+import StudentSignIn from './components/Auth/StudentSignIn';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -73,6 +74,19 @@ const theme = createTheme({
   },
 });
 
+// Protected Route component
+const ProtectedRoute = ({ children }) => {
+  // Check if user is authenticated by looking for a token in localStorage
+  const isAuthenticated = localStorage.getItem('authToken') !== null;
+  
+  if (!isAuthenticated) {
+    // Redirect to auth page if not authenticated
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return children;
+};
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -90,7 +104,15 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/auth" element={<AuthLanding />} />
-                    <Route path="/student/dashboard" element={<StudentDashboard />} />
+                    <Route 
+                      path="/student/dashboard" 
+                      element={
+                        <ProtectedRoute>
+                          <StudentDashboard />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route path="/auth/student/signin" element={<StudentSignIn />} />
                     <Route path="/auth/student/register" element={<StudentRegister />} />
                     <Route path="/verify-email" element={<EmailVerification />} />
                   </Routes>
