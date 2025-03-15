@@ -4,10 +4,15 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'schools', views.SchoolViewSet)
+router.register(r'faculty', views.FacultyViewSet)
+router.register(r'students', views.StudentViewSet)
+router.register(r'events', views.EventViewSet)
+router.register(r'classes', views.ClassViewSet)
+router.register(r'attendance', views.AttendanceViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('', include(router.urls)),  # API Endpoints for all models
     path('register/', views.register_student, name='register-student'),
     path('verify-email/', views.verify_email, name='verify-email'),
     path('student/signin/', views.student_signin, name='student-signin'),
-] 
+]
