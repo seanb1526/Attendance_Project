@@ -12,9 +12,10 @@ const EmailVerification = () => {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        // Get the token from the URL query parameters
+        // Get the token and user type from the URL query parameters
         const queryParams = new URLSearchParams(location.search);
         const token = queryParams.get('token');
+        const userType = queryParams.get('type') || 'student'; // Default to student for backward compatibility
         
         if (!token) {
           setStatus('error');
@@ -27,13 +28,18 @@ const EmailVerification = () => {
         
         // Store the token in localStorage for authentication
         localStorage.setItem('authToken', token);
+        localStorage.setItem('userType', userType); // Store user type for redirection
         
         setStatus('success');
         setMessage(response.data.message || 'Email verified successfully!');
         
-        // Replace the current history entry instead of adding to it
+        // Redirect based on user type
         setTimeout(() => {
-          navigate('/student/dashboard', { replace: true });
+          if (userType === 'faculty') {
+            navigate('/faculty/dashboard', { replace: true });
+          } else {
+            navigate('/student/dashboard', { replace: true });
+          }
         }, 3000);
       } catch (error) {
         setStatus('error');

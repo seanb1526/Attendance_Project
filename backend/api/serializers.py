@@ -5,7 +5,7 @@ from .models import School, Student, Faculty, Event, Class, Attendance
 class SchoolSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
-        fields = ['id', 'name', 'email_domain', 'student_email_domain']
+        fields = ['id', 'name', 'faculty_domain', 'student_domain']
 
 # ---------------- Student Serializer ----------------
 class StudentSerializer(serializers.ModelSerializer):
@@ -23,9 +23,9 @@ class StudentRegistrationSerializer(serializers.ModelSerializer):
         school_id = self.initial_data.get('school')
         try:
             school_obj = School.objects.get(id=school_id)
-            if not value.endswith(f'@{school_obj.student_email_domain}'):
+            if not value.endswith(f'@{school_obj.student_domain}'):
                 raise serializers.ValidationError(
-                    f"Please use your school email address ending with @{school_obj.student_email_domain}"
+                    f"Please use your school email address ending with @{school_obj.student_domain}"
                 )
         except School.DoesNotExist:
             raise serializers.ValidationError("Invalid school selected")
@@ -44,6 +44,24 @@ class FacultySerializer(serializers.ModelSerializer):
             if not value.endswith(f'@{school_obj.email_domain}'):
                 raise serializers.ValidationError(
                     f"Please use your faculty email address ending with @{school_obj.email_domain}"
+                )
+        except School.DoesNotExist:
+            raise serializers.ValidationError("Invalid school selected")
+        return value
+
+# ---------------- Faculty Registration Serializer ----------------
+class FacultyRegistrationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Faculty
+        fields = ['first_name', 'last_name', 'email', 'school']
+        
+    def validate_email(self, value):
+        school_id = self.initial_data.get('school')
+        try:
+            school_obj = School.objects.get(id=school_id)
+            if not value.endswith(f'@{school_obj.faculty_domain}'):
+                raise serializers.ValidationError(
+                    f"Please use your faculty email address ending with @{school_obj.faculty_domain}"
                 )
         except School.DoesNotExist:
             raise serializers.ValidationError("Invalid school selected")

@@ -3,6 +3,7 @@ import { Container, Typography, Box, Button, Paper, Grid, useTheme, useMediaQuer
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import SchoolIcon from '@mui/icons-material/School';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
+import PersonIcon from '@mui/icons-material/Person';
 
 const AuthLanding = () => {
   const navigate = useNavigate();
@@ -61,7 +62,7 @@ const AuthLanding = () => {
                 },
               }}
             >
-              <AccountBoxIcon sx={{ 
+              <PersonIcon sx={{ 
                 fontSize: 56, 
                 color: '#DEA514' 
               }} />
@@ -88,37 +89,19 @@ const AuthLanding = () => {
               >
                 Access your dashboard to manage events and track attendance.
               </Typography>
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: 2,
-                justifyContent: 'center'
-              }}>
+              <Box sx={{ mt: 2 }}>
                 <Button 
                   variant="contained" 
-                  fullWidth={isMobile}
-                  component={RouterLink}
-                  to="/faculty/dashboard"
-                  sx={{
-                    bgcolor: '#DEA514',
-                    '&:hover': {
-                      bgcolor: '#B88A10',
-                    }
-                  }}
+                  color="primary" 
+                  sx={{ mr: 2 }}
+                  onClick={() => navigate('/auth/faculty/signin')}
                 >
                   Sign In
                 </Button>
                 <Button 
-                  variant="outlined"
-                  fullWidth={isMobile}
-                  sx={{
-                    borderColor: '#DEA514',
-                    color: '#DEA514',
-                    '&:hover': {
-                      borderColor: '#B88A10',
-                      color: '#B88A10',
-                    }
-                  }}
+                  variant="outlined" 
+                  color="primary"
+                  onClick={() => navigate('/auth/faculty/register')}
                 >
                   Register
                 </Button>
@@ -167,39 +150,19 @@ const AuthLanding = () => {
               >
                 Sign in to view events and manage your attendance records.
               </Typography>
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: 2,
-                justifyContent: 'center'
-              }}>
+              <Box sx={{ mt: 2 }}>
                 <Button 
-                  variant="contained"
-                  fullWidth={isMobile}
-                  component={RouterLink}
-                  to="/auth/student/signin"
-                  sx={{
-                    bgcolor: '#DEA514',
-                    '&:hover': {
-                      bgcolor: '#B88A10',
-                    }
-                  }}
+                  variant="contained" 
+                  color="primary" 
+                  sx={{ mr: 2 }}
+                  onClick={() => navigate('/auth/student/signin')}
                 >
                   Sign In
                 </Button>
                 <Button 
-                  variant="outlined"
-                  fullWidth={isMobile}
-                  component={RouterLink}
-                  to="/auth/student/register"
-                  sx={{
-                    borderColor: '#DEA514',
-                    color: '#DEA514',
-                    '&:hover': {
-                      borderColor: '#B88A10',
-                      color: '#B88A10',
-                    }
-                  }}
+                  variant="outlined" 
+                  color="primary"
+                  onClick={() => navigate('/auth/student/register')}
                 >
                   Register
                 </Button>

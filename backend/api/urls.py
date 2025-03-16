@@ -12,7 +12,9 @@ router.register(r'attendance', views.AttendanceViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),  # API Endpoints for all models
-    path('register/', views.register_student, name='register-student'),
+    path('student/register/', views.register_student, name='student-register'),
+    path('faculty/register/', views.register_faculty, name='faculty-register'),
     path('verify-email/', views.verify_email, name='verify-email'),
     path('student/signin/', views.student_signin, name='student-signin'),
+    path('faculty/signin/', views.faculty_signin, name='faculty-signin'),
 ]

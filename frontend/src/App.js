@@ -11,6 +11,8 @@ import About from './components/About/About';
 import StudentRegister from './components/Auth/StudentRegister';
 import EmailVerification from './components/Auth/EmailVerification';
 import StudentSignIn from './components/Auth/StudentSignIn';
+import FacultyRegister from './components/Auth/FacultyRegister';
+import FacultySignIn from './components/Auth/FacultySignIn';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -115,6 +117,8 @@ function App() {
                     <Route path="/auth/student/signin" element={<StudentSignIn />} />
                     <Route path="/auth/student/register" element={<StudentRegister />} />
                     <Route path="/verify-email" element={<EmailVerification />} />
+                    <Route path="/auth/faculty/signin" element={<FacultySignIn />} />
+                    <Route path="/auth/faculty/register" element={<FacultyRegister />} />
                   </Routes>
                 </>
               }
