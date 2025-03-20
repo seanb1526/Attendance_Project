@@ -22,7 +22,7 @@ import EventIcon from '@mui/icons-material/Event';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import SchoolIcon from '@mui/icons-material/School';
 import ClassIcon from '@mui/icons-material/Class';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 // Import sub-components (we'll create these next)
 import Dashboard from './Dashboard';
@@ -80,7 +80,13 @@ const FacultyDashboard = () => {
                 opacity: 0.8
               }
             }}
-            onClick={() => navigate('/')}
+            onClick={() => {
+              // Clear authentication data
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('userType');
+              // Navigate to home page
+              navigate('/');
+            }}
           >
             <span style={{ color: '#DEA514' }}>TrueAttend</span>
           </Typography>
@@ -264,7 +270,7 @@ const FacultyDashboard = () => {
         <Toolbar /> {/* This creates space for the AppBar */}
         <Container maxWidth="lg">
           <Routes>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/faculty/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="events" element={<EventsList />} />
             <Route path="events/add" element={<AddEvent />} />

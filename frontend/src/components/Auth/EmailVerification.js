@@ -12,9 +12,10 @@ const EmailVerification = () => {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        // Get the token from the URL query parameters
+        // Get the token and user type from the URL query parameters
         const queryParams = new URLSearchParams(location.search);
         const token = queryParams.get('token');
+        const userType = queryParams.get('type') || 'student'; // Default to student for backward compatibility
         
         if (!token) {
           setStatus('error');
@@ -23,13 +24,23 @@ const EmailVerification = () => {
         }
         
         // Call our backend API to verify the token
-        const response = await axios.get(`/api/verify-email/?token=${token}`);
+        const response = await axios.get(`/api/verify-email/?token=${token}&type=${userType}`);
+        
+        // Store the token in localStorage for authentication
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('userType', userType); // Store user type for redirection
         
         setStatus('success');
         setMessage(response.data.message || 'Email verified successfully!');
         
-        // Redirect to login after 3 seconds
-        setTimeout(() => navigate('/auth'), 3000);
+        // Redirect based on user type
+        setTimeout(() => {
+          if (userType === 'faculty') {
+            navigate('/faculty/dashboard', { replace: true });
+          } else {
+            navigate('/student/dashboard', { replace: true });
+          }
+        }, 3000);
       } catch (error) {
         setStatus('error');
         setMessage(

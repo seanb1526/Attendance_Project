@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
@@ -10,6 +10,9 @@ import FacultyDashboard from './components/Faculty/FacultyDashboard';
 import About from './components/About/About';
 import StudentRegister from './components/Auth/StudentRegister';
 import EmailVerification from './components/Auth/EmailVerification';
+import StudentSignIn from './components/Auth/StudentSignIn';
+import FacultyRegister from './components/Auth/FacultyRegister';
+import FacultySignIn from './components/Auth/FacultySignIn';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -73,6 +76,26 @@ const theme = createTheme({
   },
 });
 
+// Protected Route component
+const ProtectedRoute = ({ children, requiredUserType = null }) => {
+  // Check if user is authenticated by looking for a token in localStorage
+  const isAuthenticated = localStorage.getItem('authToken') !== null;
+  const userType = localStorage.getItem('userType');
+  
+  if (!isAuthenticated) {
+    // Redirect to auth page if not authenticated
+    return <Navigate to="/auth" replace />;
+  }
+
+  // If a specific user type is required, check if the user matches
+  if (requiredUserType && userType !== requiredUserType) {
+    // Redirect to home page if user type doesn't match
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
+};
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -80,7 +103,27 @@ function App() {
       <Router>
         <div>
           <Routes>
-            <Route path="/faculty/*" element={<FacultyDashboard />} />
+            <Route path="/verify-email" element={<EmailVerification />} />
+            <Route path="/auth/*" element={
+              <>
+                <Navbar />
+                <Routes>
+                  <Route path="/" element={<AuthLanding />} />
+                  <Route path="/student/signin" element={<StudentSignIn />} />
+                  <Route path="/student/register" element={<StudentRegister />} />
+                  <Route path="/faculty/signin" element={<FacultySignIn />} />
+                  <Route path="/faculty/register" element={<FacultyRegister />} />
+                </Routes>
+              </>
+            } />
+            <Route 
+              path="/faculty/*" 
+              element={
+                <ProtectedRoute requiredUserType="faculty">
+                  <FacultyDashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route
               path="*"
               element={
@@ -89,10 +132,14 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/about" element={<About />} />
-                    <Route path="/auth" element={<AuthLanding />} />
-                    <Route path="/student/dashboard" element={<StudentDashboard />} />
-                    <Route path="/auth/student/register" element={<StudentRegister />} />
-                    <Route path="/verify-email" element={<EmailVerification />} />
+                    <Route 
+                      path="/student/dashboard" 
+                      element={
+                        <ProtectedRoute requiredUserType="student">
+                          <StudentDashboard />
+                        </ProtectedRoute>
+                      } 
+                    />
                   </Routes>
                 </>
               }

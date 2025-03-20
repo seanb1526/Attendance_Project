@@ -3,6 +3,7 @@ import { Container, Typography, Box, Button, Paper, Grid, useTheme, useMediaQuer
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import SchoolIcon from '@mui/icons-material/School';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
+import PersonIcon from '@mui/icons-material/Person';
 
 const AuthLanding = () => {
   const navigate = useNavigate();
@@ -61,7 +62,7 @@ const AuthLanding = () => {
                 },
               }}
             >
-              <AccountBoxIcon sx={{ 
+              <PersonIcon sx={{ 
                 fontSize: 56, 
                 color: '#DEA514' 
               }} />
@@ -88,37 +89,19 @@ const AuthLanding = () => {
               >
                 Access your dashboard to manage events and track attendance.
               </Typography>
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: 2,
-                justifyContent: 'center'
-              }}>
+              <Box sx={{ mt: 2 }}>
                 <Button 
                   variant="contained" 
-                  fullWidth={isMobile}
-                  component={RouterLink}
-                  to="/faculty/dashboard"
-                  sx={{
-                    bgcolor: '#DEA514',
-                    '&:hover': {
-                      bgcolor: '#B88A10',
-                    }
-                  }}
+                  color="primary" 
+                  sx={{ mr: 2 }}
+                  onClick={() => navigate('/auth/faculty/signin')}
                 >
                   Sign In
                 </Button>
                 <Button 
-                  variant="outlined"
-                  fullWidth={isMobile}
-                  sx={{
-                    borderColor: '#DEA514',
-                    color: '#DEA514',
-                    '&:hover': {
-                      borderColor: '#B88A10',
-                      color: '#B88A10',
-                    }
-                  }}
+                  variant="outlined" 
+                  color="primary"
+                  onClick={() => navigate('/auth/faculty/register')}
                 >
                   Register
                 </Button>
@@ -128,12 +111,10 @@ const AuthLanding = () => {
 
           <Grid item xs={12} md={6}>
             <Paper
-              onClick={() => navigate('/auth/student/register')}
               sx={{
                 p: 4,
                 textAlign: 'center',
                 height: '100%',
-                cursor: 'pointer',
                 bgcolor: '#FFFFFF',
                 transition: 'transform 0.2s, box-shadow 0.2s',
                 '&:hover': {
@@ -169,37 +150,19 @@ const AuthLanding = () => {
               >
                 Sign in to view events and manage your attendance records.
               </Typography>
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: 2,
-                justifyContent: 'center'
-              }}>
+              <Box sx={{ mt: 2 }}>
                 <Button 
-                  variant="contained"
-                  fullWidth={isMobile}
-                  component={RouterLink}
-                  to="/student/dashboard"
-                  sx={{
-                    bgcolor: '#DEA514',
-                    '&:hover': {
-                      bgcolor: '#B88A10',
-                    }
-                  }}
+                  variant="contained" 
+                  color="primary" 
+                  sx={{ mr: 2 }}
+                  onClick={() => navigate('/auth/student/signin')}
                 >
                   Sign In
                 </Button>
                 <Button 
-                  variant="outlined"
-                  fullWidth={isMobile}
-                  sx={{
-                    borderColor: '#DEA514',
-                    color: '#DEA514',
-                    '&:hover': {
-                      borderColor: '#B88A10',
-                      color: '#B88A10',
-                    }
-                  }}
+                  variant="outlined" 
+                  color="primary"
+                  onClick={() => navigate('/auth/student/register')}
                 >
                   Register
                 </Button>

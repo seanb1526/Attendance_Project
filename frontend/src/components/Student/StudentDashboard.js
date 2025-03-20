@@ -9,10 +9,20 @@ import {
   useMediaQuery 
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import LogoutIcon from '@mui/icons-material/Logout';
+import { useNavigate } from 'react-router-dom';
 
 const StudentDashboard = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Clear the authentication token
+    localStorage.removeItem('authToken');
+    // Redirect to auth page
+    navigate('/auth');
+  };
 
   return (
     <Box sx={{ 
@@ -22,18 +32,38 @@ const StudentDashboard = () => {
       bgcolor: '#F5F5DC'
     }}>
       <Container maxWidth="sm">
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          align="center"
-          sx={{ 
-            mb: 4,
-            color: '#2C2C2C',
-            fontWeight: 'bold'
-          }}
-        >
-          Student Dashboard
-        </Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          mb: 4
+        }}>
+          <Typography 
+            variant="h4" 
+            component="h1"
+            sx={{ 
+              color: '#2C2C2C',
+              fontWeight: 'bold'
+            }}
+          >
+            Student Dashboard
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<LogoutIcon />}
+            onClick={handleLogout}
+            sx={{
+              borderColor: '#DEA514',
+              color: '#DEA514',
+              '&:hover': {
+                borderColor: '#B88A10',
+                color: '#B88A10',
+              }
+            }}
+          >
+            Logout
+          </Button>
+        </Box>
 
         <Paper 
           elevation={2}
