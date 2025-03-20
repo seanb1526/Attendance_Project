@@ -22,45 +22,19 @@ class StudentViewSet(viewsets.ModelViewSet):
 # ---------------- Register Student ----------------
 @api_view(['POST'])
 def register_student(request):
+    # Validate request data
     serializer = StudentRegistrationSerializer(data=request.data)
     if serializer.is_valid():
-        try:
-            student = serializer.save(email_verified=False)
-            token = jwt.encode({
-                'student_id': str(student.id),
-                'exp': datetime.utcnow() + timedelta(hours=24)
-            }, settings.SECRET_KEY, algorithm='HS256')
-
-            verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-
-            html_message = f"""
-            <h3>Welcome to ClassAttend!</h3>
-            <p>Thank you for registering. Please click the button below to verify your email address:</p>
-            <p><a href="{verification_url}" style="background-color: #DEA514; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
-            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-            <p>{verification_url}</p>
-            """
-            
-            send_mail(
-                subject="Verify your ClassAttend account",
-                message=f"Welcome to ClassAttend! Click the following link to verify your email: {verification_url}",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[student.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-
-            return Response({
-                'message': 'Registration successful. Please check your email to verify your account.'
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            traceback.print_exc()
-            return Response({
-                'error': f'Registration error: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Create student with email_verified set to False
+        student = serializer.save(email_verified=False)
+        
+        # Simply return the success response with the student ID
+        return Response({
+            'message': 'Registration successful.',
+            'student_id': str(student.id)
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ---------------- Verify Email ----------------
 @api_view(['GET'])
@@ -312,3 +286,23 @@ def create_class(request):
         return Response({
             'error': f'Error creating class: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def lookup_student(request):
+    """Look up a student by email"""
+    email = request.query_params.get('email')
+    
+    if not email:
+        return Response({'error': 'Email parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        student = Student.objects.get(email=email)
+        return Response({
+            'id': str(student.id),
+            'email': student.email,
+            'first_name': student.first_name,
+            'last_name': student.last_name,
+            'student_id': student.student_id
+        })
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)

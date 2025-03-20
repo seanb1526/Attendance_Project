@@ -110,27 +110,40 @@ const AddClass = () => {
       const schoolId = localStorage.getItem('schoolId');
       const studentIds = [];
       
+      // Process each student
       for (const student of students) {
         try {
-          // Try to register the student
-          const registerResponse = await axios.post('/api/student/register/', {
-            first_name: student.firstName,
-            last_name: student.lastName,
-            student_id: student.studentId,
-            email: student.email,
-            school: schoolId,
-          });
+          // Use the dedicated lookup endpoint to check if student exists by email
+          const lookupResponse = await axios.get(`/api/student/lookup/?email=${student.email}`);
           
-          // If successful, note the student ID
-          if (registerResponse.data.student_id) {
-            studentIds.push(registerResponse.data.student_id);
-          }
+          // If we get a successful response, the student exists
+          studentIds.push(lookupResponse.data.id);
         } catch (error) {
-          // If error is because student already exists, that's ok
-          console.log(`Note: Student may already exist: ${student.email}`);
-          // In a production app, you would want to look up the student ID here
+          // If we get a 404, the student doesn't exist, so register them
+          if (error.response && error.response.status === 404) {
+            try {
+              const registerResponse = await axios.post('/api/student/register/', {
+                first_name: student.firstName,
+                last_name: student.lastName,
+                student_id: student.studentId,
+                email: student.email,
+                school: schoolId,
+              });
+              
+              // Get the student ID from the updated response
+              if (registerResponse.data && registerResponse.data.student_id) {
+                studentIds.push(registerResponse.data.student_id);
+              }
+            } catch (registerError) {
+              console.error(`Error registering student ${student.email}:`, registerError);
+            }
+          } else {
+            console.error(`Error looking up student ${student.email}:`, error);
+          }
         }
       }
+      
+      console.log('Student IDs to be added to class:', studentIds);
       
       // Create the class with the /api/class/create/ endpoint
       const classResponse = await axios.post('/api/class/create/', {
