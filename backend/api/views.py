@@ -226,7 +226,7 @@ def faculty_signin(request):
         }, settings.SECRET_KEY, algorithm='HS256')
 
         # Send signin link via email
-        signin_url = f"{settings.FRONTEND_URL}/faculty/auth?token={token}"
+        signin_url = f"{settings.FRONTEND_URL}/verify-email?token={token}&type=faculty"
         
         html_message = f"""
         <h3>Faculty Sign In</h3>

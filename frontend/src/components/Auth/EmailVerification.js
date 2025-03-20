@@ -24,7 +24,7 @@ const EmailVerification = () => {
         }
         
         // Call our backend API to verify the token
-        const response = await axios.get(`/api/verify-email/?token=${token}`);
+        const response = await axios.get(`/api/verify-email/?token=${token}&type=${userType}`);
         
         // Store the token in localStorage for authentication
         localStorage.setItem('authToken', token);

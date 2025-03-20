@@ -77,13 +77,20 @@ const theme = createTheme({
 });
 
 // Protected Route component
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, requiredUserType = null }) => {
   // Check if user is authenticated by looking for a token in localStorage
   const isAuthenticated = localStorage.getItem('authToken') !== null;
+  const userType = localStorage.getItem('userType');
   
   if (!isAuthenticated) {
     // Redirect to auth page if not authenticated
     return <Navigate to="/auth" replace />;
+  }
+
+  // If a specific user type is required, check if the user matches
+  if (requiredUserType && userType !== requiredUserType) {
+    // Redirect to home page if user type doesn't match
+    return <Navigate to="/" replace />;
   }
   
   return children;
@@ -96,7 +103,27 @@ function App() {
       <Router>
         <div>
           <Routes>
-            <Route path="/faculty/*" element={<FacultyDashboard />} />
+            <Route path="/verify-email" element={<EmailVerification />} />
+            <Route path="/auth/*" element={
+              <>
+                <Navbar />
+                <Routes>
+                  <Route path="/" element={<AuthLanding />} />
+                  <Route path="/student/signin" element={<StudentSignIn />} />
+                  <Route path="/student/register" element={<StudentRegister />} />
+                  <Route path="/faculty/signin" element={<FacultySignIn />} />
+                  <Route path="/faculty/register" element={<FacultyRegister />} />
+                </Routes>
+              </>
+            } />
+            <Route 
+              path="/faculty/*" 
+              element={
+                <ProtectedRoute requiredUserType="faculty">
+                  <FacultyDashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route
               path="*"
               element={
@@ -105,20 +132,14 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/about" element={<About />} />
-                    <Route path="/auth" element={<AuthLanding />} />
                     <Route 
                       path="/student/dashboard" 
                       element={
-                        <ProtectedRoute>
+                        <ProtectedRoute requiredUserType="student">
                           <StudentDashboard />
                         </ProtectedRoute>
                       } 
                     />
-                    <Route path="/auth/student/signin" element={<StudentSignIn />} />
-                    <Route path="/auth/student/register" element={<StudentRegister />} />
-                    <Route path="/verify-email" element={<EmailVerification />} />
-                    <Route path="/auth/faculty/signin" element={<FacultySignIn />} />
-                    <Route path="/auth/faculty/register" element={<FacultyRegister />} />
                   </Routes>
                 </>
               }

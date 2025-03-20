@@ -35,7 +35,7 @@ class StudentRegistrationSerializer(serializers.ModelSerializer):
 class FacultySerializer(serializers.ModelSerializer):
     class Meta:
         model = Faculty
-        fields = ['id', 'first_name', 'last_name', 'email', 'school']
+        fields = ['first_name', 'last_name', 'email', 'school']
 
     def validate_email(self, value):
         school_id = self.initial_data.get('school')

@@ -7,6 +7,7 @@ import {
   Button,
   Grid,
   Alert,
+  Container,
 } from '@mui/material';
 import axios from '../../utils/axios';
 
@@ -37,12 +38,12 @@ const StudentSignIn = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 4 }}>
-        Student Sign In
-      </Typography>
+    <Container maxWidth="md" sx={{ mt: '100px', mb: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h5" component="h1" gutterBottom align="center" sx={{ mb: 4 }}>
+          Student Sign In
+        </Typography>
 
-      <Paper sx={{ p: 3 }}>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
@@ -74,6 +75,7 @@ const StudentSignIn = () => {
                 variant="contained"
                 fullWidth
                 size="large"
+                sx={{ mt: 2 }}
               >
                 Sign In
               </Button>
@@ -81,7 +83,7 @@ const StudentSignIn = () => {
           </Grid>
         </form>
       </Paper>
-    </Box>
+    </Container>
   );
 };
 
