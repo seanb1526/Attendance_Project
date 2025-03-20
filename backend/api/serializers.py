@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import School, Student, Faculty, Event, Class, Attendance
+from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent
 
 # ---------------- School Serializer ----------------
 class SchoolSerializer(serializers.ModelSerializer):
@@ -75,9 +75,16 @@ class EventSerializer(serializers.ModelSerializer):
 
 # ---------------- Class Serializer ----------------
 class ClassSerializer(serializers.ModelSerializer):
+    students = serializers.SerializerMethodField()
+    
     class Meta:
         model = Class
-        fields = ['id', 'name', 'faculty', 'students', 'events']
+        fields = ['id', 'name', 'faculty', 'school', 'students']
+        
+    def get_students(self, obj):
+        class_students = ClassStudent.objects.filter(class_instance=obj)
+        student_ids = [cs.student.id for cs in class_students]
+        return student_ids
 
 # ---------------- Attendance Serializer ----------------
 class AttendanceSerializer(serializers.ModelSerializer):

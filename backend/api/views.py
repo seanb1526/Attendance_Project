@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import School, Student, Faculty, Event, Class, Attendance
+from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent
 from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer
 from django.conf import settings
 import jwt
@@ -65,39 +65,45 @@ def register_student(request):
 # ---------------- Verify Email ----------------
 @api_view(['GET'])
 def verify_email(request):
-    token = request.GET.get('token')
-    user_type = request.GET.get('type', 'student')  # Default to student for backward compatibility
+    token = request.query_params.get('token')
+    user_type = request.query_params.get('type', 'student')
     
     if not token:
-        return Response({'error': 'No verification token provided'}, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response({'error': 'No token provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
         
         if user_type == 'faculty':
             faculty_id = payload.get('faculty_id')
-            if not faculty_id:
-                raise jwt.InvalidTokenError('Invalid faculty token')
-            user = Faculty.objects.get(id=faculty_id)
+            faculty = Faculty.objects.get(id=faculty_id)
+            faculty.email_verified = True
+            faculty.save()
+            
+            return Response({
+                'message': 'Email verified successfully. You can now sign in.',
+                'faculty_id': faculty_id,
+                'school_id': str(faculty.school.id)
+            })
         else:
+            # Handle student email verification
             student_id = payload.get('student_id')
             if not student_id:
                 raise jwt.InvalidTokenError('Invalid student token')
             user = Student.objects.get(id=student_id)
 
-        user.email_verified = True
-        user.save()
+            user.email_verified = True
+            user.save()
 
-        return Response({'message': 'Email verified successfully'})
+            return Response({'message': 'Email verified successfully'})
     except jwt.ExpiredSignatureError:
         return Response({'error': 'Verification link has expired'}, status=status.HTTP_400_BAD_REQUEST)
-    except jwt.InvalidTokenError:
-        return Response({'error': 'Invalid verification token'}, status=status.HTTP_400_BAD_REQUEST)
-    except (Student.DoesNotExist, Faculty.DoesNotExist):
+    except (jwt.DecodeError, jwt.InvalidTokenError):
+        return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+    except (Faculty.DoesNotExist, Student.DoesNotExist):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        traceback.print_exc()
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': f'Verification error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ---------------- Student Sign In ----------------
 @api_view(['POST'])
@@ -257,4 +263,52 @@ def faculty_signin(request):
         traceback.print_exc()
         return Response({
             'error': f'Sign in error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ---------------- Create Class ----------------
+@api_view(['POST'])
+def create_class(request):
+    # Get the faculty member from the authentication token
+    faculty_id = request.data.get('faculty_id')
+    
+    try:
+        faculty = Faculty.objects.get(id=faculty_id)
+        
+        # Create the class
+        class_data = {
+            'name': request.data.get('name'),
+            'faculty': faculty.id,
+            'school': faculty.school.id
+        }
+        
+        serializer = ClassSerializer(data=class_data)
+        if serializer.is_valid():
+            new_class = serializer.save()
+            
+            # If students are provided, add them to the class
+            student_ids = request.data.get('students', [])
+            for student_id in student_ids:
+                try:
+                    student = Student.objects.get(id=student_id)
+                    ClassStudent.objects.create(
+                        class_instance=new_class,
+                        student=student
+                    )
+                except Student.DoesNotExist:
+                    continue
+            
+            return Response({
+                'message': 'Class created successfully',
+                'class': ClassSerializer(new_class).data
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Faculty.DoesNotExist:
+        return Response({
+            'error': 'Faculty not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'error': f'Error creating class: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
