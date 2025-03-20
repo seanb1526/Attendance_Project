@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -8,43 +8,79 @@ import {
   useTheme,
   useMediaQuery,
   Chip,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PeopleIcon from '@mui/icons-material/People';
 import { useNavigate } from 'react-router-dom';
-
-// Mock data - we'll replace this with real data later
-const mockClasses = [
-  {
-    id: 1,
-    name: 'Introduction to Computer Science',
-    code: 'CS101',
-    section: 'A',
-    students: 45,
-    semester: 'Spring 2024'
-  },
-  {
-    id: 2,
-    name: 'Data Structures',
-    code: 'CS201',
-    section: 'B',
-    students: 38,
-    semester: 'Spring 2024'
-  },
-  {
-    id: 3,
-    name: 'Algorithm Analysis',
-    code: 'CS301',
-    section: 'A',
-    students: 32,
-    semester: 'Spring 2024'
-  },
-];
+import axios from '../../../utils/axios';
 
 const ClassesList = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const facultyId = localStorage.getItem('facultyId');
+        
+        if (!facultyId) {
+          setError('Faculty ID not found. Please sign in again.');
+          setLoading(false);
+          return;
+        }
+        
+        // Fetch classes where faculty ID matches
+        const response = await axios.get(`/api/classes/?faculty=${facultyId}`);
+        
+        // Transform the data to match our UI needs
+        const classesWithDetails = response.data.map(classItem => {
+          // Try to parse metadata from description field if it exists
+          let code = '';
+          let section = '';
+          let semester = 'Current Semester'; // Default semester if none provided
+          let description = '';
+          
+          try {
+            if (classItem.description) {
+              const metadata = JSON.parse(classItem.description);
+              code = metadata.code || '';
+              section = metadata.section || '';
+              semester = metadata.semester || 'Current Semester';
+              description = metadata.description || '';
+            }
+          } catch (e) {
+            console.error('Error parsing class metadata:', e);
+          }
+          
+          return {
+            id: classItem.id,
+            name: classItem.name,
+            code,
+            section,
+            semester,
+            description,
+            students: Array.isArray(classItem.students) ? classItem.students.length : 0
+          };
+        });
+        
+        setClasses(classesWithDetails);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching classes:', error);
+        setError('Failed to load classes. Please try again later.');
+        setLoading(false);
+      }
+    };
+    
+    fetchClasses();
+  }, []);
 
   return (
     <Box>
@@ -82,63 +118,101 @@ const ClassesList = () => {
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
-        {mockClasses.map((classItem) => (
-          <Grid item xs={12} md={6} lg={4} key={classItem.id}>
-            <Paper
-              sx={{
-                p: 3,
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                bgcolor: '#FFFFFF',
-                minHeight: '200px',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 3,
-                },
-              }}
-              onClick={() => navigate(`/faculty/classes/${classItem.id}`)}
-            >
-              <Box sx={{ mb: 2 }}>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    color: '#2C2C2C',
-                    mb: 1 
-                  }}
-                >
-                  {classItem.name}
-                </Typography>
-                <Typography 
-                  variant="subtitle2" 
-                  sx={{ 
-                    color: '#666',
-                    mb: 2
-                  }}
-                >
-                  {classItem.code} - Section {classItem.section}
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                  <Chip 
-                    label={classItem.semester} 
-                    size="small"
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress sx={{ color: '#DEA514' }} />
+        </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
+      ) : classes.length === 0 ? (
+        <Box sx={{ 
+          textAlign: 'center', 
+          py: 4, 
+          px: 2, 
+          bgcolor: '#FFFFFF', 
+          borderRadius: 1,
+          boxShadow: 1
+        }}>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+            You haven't created any classes yet
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/faculty/classes/add')}
+            sx={{
+              bgcolor: '#DEA514',
+              '&:hover': {
+                bgcolor: '#B88A10',
+              }
+            }}
+          >
+            Create Your First Class
+          </Button>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {classes.map((classItem) => (
+            <Grid item xs={12} md={6} lg={4} key={classItem.id}>
+              <Paper
+                sx={{
+                  p: 3,
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  bgcolor: '#FFFFFF',
+                  minHeight: '200px',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: 3,
+                  },
+                }}
+                onClick={() => navigate(`/faculty/classes/${classItem.id}`)}
+              >
+                <Box sx={{ mb: 2 }}>
+                  <Typography 
+                    variant="h6" 
                     sx={{ 
-                      bgcolor: '#DEA514',
-                      color: 'white'
+                      color: '#2C2C2C',
+                      mb: 1 
                     }}
-                  />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', color: '#666' }}>
-                  <PeopleIcon sx={{ mr: 1, fontSize: 20 }} />
-                  <Typography variant="body2">
-                    {classItem.students} Students
+                  >
+                    {classItem.name}
                   </Typography>
+                  <Typography 
+                    variant="subtitle2" 
+                    sx={{ 
+                      color: '#666',
+                      mb: 2
+                    }}
+                  >
+                    {classItem.code ? (
+                      classItem.section ? 
+                        `${classItem.code} - Section ${classItem.section}` : 
+                        classItem.code
+                    ) : ''}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                    <Chip 
+                      label={classItem.semester} 
+                      size="small"
+                      sx={{ 
+                        bgcolor: '#DEA514',
+                        color: 'white'
+                      }}
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', color: '#666' }}>
+                    <PeopleIcon sx={{ mr: 1, fontSize: 20 }} />
+                    <Typography variant="body2">
+                      {classItem.students} Students
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      )}
     </Box>
   );
 };

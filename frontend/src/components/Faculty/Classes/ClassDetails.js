@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -14,36 +14,149 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import EventIcon from '@mui/icons-material/Event';
 import PeopleIcon from '@mui/icons-material/People';
-import { useParams } from 'react-router-dom';
-
-// Mock data - we'll replace this with real data later
-const mockClass = {
-  id: 1,
-  name: 'Introduction to Computer Science',
-  code: 'CS101',
-  section: 'A',
-  semester: 'Spring 2024',
-  description: 'An introductory course covering the basics of computer science and programming.',
-  students: 45,
-  events: [
-    { id: 1, name: 'Guest Speaker: AI Ethics', date: '2024-03-15', attended: 32 },
-    { id: 2, name: 'Programming Workshop', date: '2024-03-22', attended: 28 },
-  ]
-};
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from '../../../utils/axios';
 
 const ClassDetails = () => {
-  const [tabValue, setTabValue] = React.useState(0);
+  const [tabValue, setTabValue] = useState(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [classData, setClassData] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchClassDetails = async () => {
+      try {
+        // Fetch the class data
+        const classResponse = await axios.get(`/api/classes/${id}/`);
+        
+        // Parse metadata if available
+        let metadata = {
+          code: '',
+          section: '',
+          semester: 'Current Semester',
+          description: ''
+        };
+        
+        try {
+          if (classResponse.data.description) {
+            const parsedMetadata = JSON.parse(classResponse.data.description);
+            metadata = { ...metadata, ...parsedMetadata };
+          }
+        } catch (e) {
+          console.error('Error parsing class metadata:', e);
+        }
+        
+        // Combine the class data with the parsed metadata
+        const enhancedClassData = {
+          ...classResponse.data,
+          code: metadata.code,
+          section: metadata.section,
+          semester: metadata.semester,
+          fullDescription: metadata.description
+        };
+        
+        setClassData(enhancedClassData);
+        
+        // Fetch students enrolled in this class
+        if (Array.isArray(classResponse.data.students) && classResponse.data.students.length > 0) {
+          const studentPromises = classResponse.data.students.map(studentId => 
+            axios.get(`/api/students/${studentId}/`)
+          );
+          
+          try {
+            const studentResponses = await Promise.all(studentPromises);
+            const studentData = studentResponses.map(res => res.data);
+            setStudents(studentData);
+          } catch (studentError) {
+            console.error('Error fetching students:', studentError);
+            setStudents([]);
+          }
+        }
+        
+        // Fetch events associated with this class
+        try {
+          const eventsResponse = await axios.get(`/api/events/?class=${id}`);
+          setEvents(eventsResponse.data || []);
+        } catch (eventError) {
+          console.error('Error fetching events:', eventError);
+          setEvents([]);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching class details:', error);
+        setError('Failed to load class details. Please try again later.');
+        setLoading(false);
+      }
+    };
+    
+    fetchClassDetails();
+  }, [id]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+        <CircularProgress sx={{ color: '#DEA514' }} />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert 
+        severity="error" 
+        sx={{ my: 2 }}
+        action={
+          <Button 
+            color="inherit" 
+            size="small" 
+            onClick={() => navigate('/faculty/classes')}
+          >
+            Go Back
+          </Button>
+        }
+      >
+        {error}
+      </Alert>
+    );
+  }
+
+  if (!classData) {
+    return (
+      <Alert 
+        severity="warning" 
+        sx={{ my: 2 }}
+        action={
+          <Button 
+            color="inherit" 
+            size="small" 
+            onClick={() => navigate('/faculty/classes')}
+          >
+            Go Back
+          </Button>
+        }
+      >
+        Class not found.
+      </Alert>
+    );
+  }
 
   return (
     <Box>
@@ -61,24 +174,46 @@ const ClassDetails = () => {
         }}>
           <Box>
             <Typography variant="h4" sx={{ color: '#2C2C2C', fontWeight: 'bold' }}>
-              {mockClass.name}
+              {classData.name}
             </Typography>
-            <Typography variant="subtitle1" sx={{ color: '#666', mt: 1 }}>
-              {mockClass.code} - Section {mockClass.section}
-            </Typography>
+            {classData.code && (
+              <Typography variant="subtitle1" sx={{ color: '#666', mt: 1 }}>
+                {classData.code}{classData.section ? ` - Section ${classData.section}` : ''}
+              </Typography>
+            )}
             <Chip 
-              label={mockClass.semester} 
+              label={classData.semester} 
               sx={{ mt: 1, bgcolor: '#DEA514', color: 'white' }}
             />
           </Box>
           <Button
             variant="outlined"
             startIcon={<EditIcon />}
-            sx={{ minWidth: isMobile ? '100%' : 'auto' }}
+            onClick={() => navigate(`/faculty/classes/edit/${id}`)}
+            sx={{ 
+              minWidth: isMobile ? '100%' : 'auto',
+              borderColor: '#DEA514',
+              color: '#DEA514',
+              '&:hover': {
+                borderColor: '#B88A10',
+                color: '#B88A10',
+              }
+            }}
           >
             Edit Class
           </Button>
         </Box>
+        
+        {classData.fullDescription && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Description
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#666' }}>
+              {classData.fullDescription}
+            </Typography>
+          </Box>
+        )}
       </Paper>
 
       <Paper sx={{ 
@@ -98,54 +233,106 @@ const ClassDetails = () => {
           }}
         >
           <Tab icon={<EventIcon />} label="Events" />
-          <Tab icon={<PeopleIcon />} label="Students" />
+          <Tab icon={<PeopleIcon />} label={`Students (${students.length})`} />
         </Tabs>
-      </Paper>
 
-      <Box sx={{ mt: 3 }}>
-        {tabValue === 0 ? (
-          <Grid container spacing={3}>
-            {mockClass.events.map((event) => (
-              <Grid item xs={12} md={6} key={event.id}>
-                <Paper sx={{ 
-                  p: 3,
-                  bgcolor: '#FFFFFF'
-                }}>
-                  <Typography variant="h6">{event.name}</Typography>
-                  <Typography variant="subtitle2" sx={{ color: '#666', my: 1 }}>
-                    Date: {event.date}
-                  </Typography>
-                  <Typography variant="body2">
-                    Attendance: {event.attended} students
-                  </Typography>
-                </Paper>
+        <Box sx={{ p: 2 }}>
+          {tabValue === 0 ? (
+            events.length > 0 ? (
+              <Grid container spacing={3}>
+                {events.map((event) => (
+                  <Grid item xs={12} md={6} key={event.id}>
+                    <Paper sx={{ 
+                      p: 3,
+                      bgcolor: '#FFFFFF',
+                      boxShadow: 1,
+                    }}>
+                      <Typography variant="h6">{event.name}</Typography>
+                      <Typography variant="subtitle2" sx={{ color: '#666', my: 1 }}>
+                        Date: {new Date(event.date).toLocaleDateString()}
+                      </Typography>
+                      {event.description && (
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          {event.description}
+                        </Typography>
+                      )}
+                      {event.attendance_count !== undefined && (
+                        <Typography variant="body2">
+                          Attendance: {event.attendance_count} students
+                        </Typography>
+                      )}
+                    </Paper>
+                  </Grid>
+                ))}
               </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Paper sx={{ 
-            bgcolor: '#FFFFFF'
-          }}>
-            <List>
-              {[...Array(5)].map((_, index) => (
-                <React.Fragment key={index}>
-                  <ListItem>
-                    <ListItemText 
-                      primary={`Student ${index + 1}`}
-                      secondary={`student${index + 1}@university.edu`}
-                    />
-                    <Chip 
-                      label={`${Math.floor(Math.random() * 5)} events attended`}
-                      size="small"
-                    />
-                  </ListItem>
-                  {index < 4 && <Divider />}
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
-        )}
-      </Box>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="body1" color="text.secondary">
+                  No events created for this class yet.
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate('/faculty/events/add', { state: { classId: id } })}
+                  sx={{
+                    mt: 2,
+                    bgcolor: '#DEA514',
+                    '&:hover': {
+                      bgcolor: '#B88A10',
+                    }
+                  }}
+                >
+                  Create Event
+                </Button>
+              </Box>
+            )
+          ) : (
+            students.length > 0 ? (
+              <Paper sx={{ 
+                bgcolor: '#FFFFFF',
+                boxShadow: 0
+              }}>
+                <List>
+                  {students.map((student, index) => (
+                    <React.Fragment key={student.id}>
+                      <ListItem>
+                        <ListItemText 
+                          primary={`${student.first_name} ${student.last_name}`}
+                          secondary={student.email}
+                        />
+                        <Chip 
+                          label={student.student_id}
+                          size="small"
+                          sx={{ bgcolor: '#f0f0f0' }}
+                        />
+                      </ListItem>
+                      {index < students.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              </Paper>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="body1" color="text.secondary">
+                  No students enrolled in this class yet.
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate(`/faculty/classes/edit/${id}`, { state: { tabIndex: 1 } })}
+                  sx={{
+                    mt: 2,
+                    bgcolor: '#DEA514',
+                    '&:hover': {
+                      bgcolor: '#B88A10',
+                    }
+                  }}
+                >
+                  Add Students
+                </Button>
+              </Box>
+            )
+          )}
+        </Box>
+      </Paper>
     </Box>
   );
 };
