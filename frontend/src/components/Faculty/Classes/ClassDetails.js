@@ -189,9 +189,8 @@ const ClassDetails = () => {
           <Button
             variant="outlined"
             startIcon={<EditIcon />}
-            onClick={() => navigate(`/faculty/classes/edit/${id}`)}
-            sx={{ 
-              minWidth: isMobile ? '100%' : 'auto',
+            onClick={() => navigate(`/faculty/classes/${id}/edit`)}
+            sx={{
               borderColor: '#DEA514',
               color: '#DEA514',
               '&:hover': {

@@ -19,4 +19,5 @@ urlpatterns = [
     path('faculty/signin/', views.faculty_signin, name='faculty-signin'),
     path('class/create/', views.create_class, name='create-class'),
     path('student/lookup/', views.lookup_student, name='lookup-student'),
+    path('class/<int:pk>/update/', views.update_class, name='update-class'),
 ]

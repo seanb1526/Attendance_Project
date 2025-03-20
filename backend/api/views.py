@@ -306,3 +306,44 @@ def lookup_student(request):
         })
     except Student.DoesNotExist:
         return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+
+# ---------------- Update Class ----------------
+@api_view(['PUT'])
+def update_class(request, pk):
+    try:
+        class_instance = Class.objects.get(pk=pk)
+        
+        # Update basic class information
+        class_instance.name = request.data.get('name', class_instance.name)
+        
+        # Update description/metadata
+        if 'description' in request.data:
+            class_instance.description = request.data['description']
+        
+        class_instance.save()
+        
+        # Update students if provided
+        if 'students' in request.data:
+            # Remove existing student associations
+            ClassStudent.objects.filter(class_instance=class_instance).delete()
+            
+            # Add new student associations
+            student_ids = request.data.get('students', [])
+            for student_id in student_ids:
+                try:
+                    student = Student.objects.get(id=student_id)
+                    ClassStudent.objects.create(
+                        class_instance=class_instance,
+                        student=student
+                    )
+                except Student.DoesNotExist:
+                    continue
+        
+        return Response({
+            'message': 'Class updated successfully',
+            'class': ClassSerializer(class_instance).data
+        })
+    except Class.DoesNotExist:
+        return Response({'error': 'Class not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': f'Error updating class: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
