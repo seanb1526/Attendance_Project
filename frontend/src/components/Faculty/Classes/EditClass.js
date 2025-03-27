@@ -182,12 +182,12 @@ const EditClass = () => {
           try {
             // Check if student exists by email
             const lookupResponse = await axios.get(`/api/student/lookup/?email=${student.email}`);
-            
-            // If we get a successful response, the student exists
+            // If we get here, the student exists
             studentIds.push(lookupResponse.data.id);
           } catch (error) {
-            // If we get a 404, the student doesn't exist, so register them
-            if (error.response && error.response.status === 404) {
+            if (error.response?.status === 404) {
+              // Student doesn't exist - this is expected for new students
+              // Register them without logging an error
               try {
                 const registerResponse = await axios.post('/api/student/register/', {
                   first_name: student.firstName,
@@ -197,14 +197,15 @@ const EditClass = () => {
                   school: schoolId,
                 });
                 
-                // Get the student ID from the response
                 if (registerResponse.data && registerResponse.data.student_id) {
                   studentIds.push(registerResponse.data.student_id);
                 }
               } catch (registerError) {
+                // This is an actual error we should log
                 console.error(`Error registering student ${student.email}:`, registerError);
               }
             } else {
+              // This is an actual error we should log
               console.error(`Error looking up student ${student.email}:`, error);
             }
           }
