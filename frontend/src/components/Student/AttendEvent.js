@@ -1,12 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { 
+  Box, 
+  CircularProgress, 
+  Typography,
+  useTheme,
+  useMediaQuery
+} from '@mui/material';
 import axios from '../../utils/axios';
 
 const AttendEvent = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  
+  // Add these lines for mobile detection
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   useEffect(() => {
     // Check if the user is logged in
@@ -22,9 +32,20 @@ const AttendEvent = () => {
   }, [eventId, navigate]);
   
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 10 }}>
-      <CircularProgress />
-      <Typography variant="h6" sx={{ mt: 2 }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      minHeight: '50vh',  // Better vertical centering
+      p: 2  // Add padding for smaller screens
+    }}>
+      <CircularProgress size={isMobile ? 40 : 50} />
+      <Typography 
+        variant={isMobile ? "body1" : "h6"} 
+        align="center"
+        sx={{ mt: 2 }}
+      >
         Processing attendance...
       </Typography>
     </Box>

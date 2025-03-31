@@ -4,30 +4,32 @@ import {
   Typography, 
   Box, 
   Paper, 
-  Button,
-  useTheme,
-  useMediaQuery 
+  Button
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const StudentDashboard = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  console.log("StudentId from localStorage:", localStorage.getItem('studentId'));
+  
   const navigate = useNavigate();
   const isAuthenticated = localStorage.getItem('studentId') !== null;
+  console.log("isAuthenticated value:", isAuthenticated);
 
   const handleLogout = () => {
-    // Clear the authentication token
+    // Clear all auth-related data
     localStorage.removeItem('authToken');
+    localStorage.removeItem('studentId');
+    localStorage.removeItem('userType');
     // Redirect to auth page
     navigate('/auth');
   };
 
   return (
     <Box sx={{ 
-      pt: isMobile ? 10 : 12, 
+      pt: 12, 
       pb: 4,
       minHeight: '100vh',
       bgcolor: '#F5F5DC'
@@ -69,12 +71,15 @@ const StudentDashboard = () => {
         <Paper 
           elevation={2}
           sx={{
-            p: 4,
+            p: { xs: 2, sm: 4 },
             bgcolor: '#FFFFFF',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 3
+            gap: { xs: 2, sm: 3 },
+            width: '100%',
+            maxWidth: '500px',
+            mx: 'auto'
           }}
         >
           <Typography 
@@ -87,8 +92,8 @@ const StudentDashboard = () => {
 
           <Box 
             sx={{
-              width: '200px',
-              height: '200px',
+              width: { xs: '150px', sm: '200px' },
+              height: { xs: '150px', sm: '200px' },
               border: '2px dashed #DEA514',
               borderRadius: 2,
               display: 'flex',
@@ -99,7 +104,7 @@ const StudentDashboard = () => {
           >
             <QrCodeScannerIcon 
               sx={{ 
-                fontSize: 80, 
+                fontSize: { xs: 60, sm: 80 },
                 color: '#DEA514',
                 opacity: 0.7
               }} 
@@ -112,8 +117,10 @@ const StudentDashboard = () => {
               to="/scan"
               variant="contained"
               size="large"
+              fullWidth
               startIcon={<QrCodeScannerIcon />}
               sx={{
+                maxWidth: { xs: '100%', sm: '300px' },
                 bgcolor: '#DEA514',
                 '&:hover': {
                   bgcolor: '#B88A10',

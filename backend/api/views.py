@@ -78,7 +78,10 @@ def verify_email(request):
             user.email_verified = True
             user.save()
 
-            return Response({'message': 'Email verified successfully'})
+            return Response({
+                'message': 'Email verified successfully',
+                'student_id': str(student_id)
+            })
     except jwt.ExpiredSignatureError:
         return Response({'error': 'Verification link has expired'}, status=status.HTTP_400_BAD_REQUEST)
     except (jwt.DecodeError, jwt.InvalidTokenError):
