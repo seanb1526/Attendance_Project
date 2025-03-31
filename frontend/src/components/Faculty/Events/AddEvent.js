@@ -8,13 +8,18 @@ import {
   Grid,
   useTheme,
   useMediaQuery,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const AddEvent = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const [eventData, setEventData] = useState({
     name: '',
@@ -24,11 +29,40 @@ const AddEvent = () => {
     location: '',
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Just log the data and navigate back for now
-    console.log('Creating event:', eventData);
-    navigate('/faculty/events');
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Format the date and time for the API
+      const dateTime = new Date(`${eventData.date}T${eventData.time}`).toISOString();
+      
+      // Get faculty ID from local storage or context
+      // This is just a placeholder - you need to implement your authentication system
+      const facultyId = localStorage.getItem('facultyId');
+      const schoolId = localStorage.getItem('schoolId');
+      
+      const eventPayload = {
+        name: eventData.name,
+        description: eventData.description,
+        date: dateTime,
+        location: eventData.location,
+        faculty: facultyId,
+        school: schoolId,
+      };
+      
+      // Make the API request
+      await axios.post('/api/events/', eventPayload);
+      
+      // Redirect on success
+      navigate('/faculty/events');
+    } catch (err) {
+      console.error('Error creating event:', err);
+      setError(err.response?.data?.message || 'Failed to create event. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (field) => (event) => {
@@ -132,6 +166,7 @@ const AddEvent = () => {
                 variant="outlined"
                 onClick={() => navigate('/faculty/events')}
                 fullWidth={isMobile}
+                disabled={loading}
               >
                 Cancel
               </Button>
@@ -139,6 +174,7 @@ const AddEvent = () => {
                 type="submit"
                 variant="contained"
                 fullWidth={isMobile}
+                disabled={loading}
                 sx={{
                   bgcolor: '#DEA514',
                   '&:hover': {
@@ -146,12 +182,24 @@ const AddEvent = () => {
                   }
                 }}
               >
-                Create Event
+                {loading ? 'Creating...' : 'Create Event'}
               </Button>
             </Box>
           </Grid>
         </Grid>
       </Paper>
+      
+      {/* Error message */}
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={6000} 
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
