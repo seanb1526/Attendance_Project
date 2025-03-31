@@ -13,6 +13,9 @@ import EmailVerification from './components/Auth/EmailVerification';
 import StudentSignIn from './components/Auth/StudentSignIn';
 import FacultyRegister from './components/Auth/FacultyRegister';
 import FacultySignIn from './components/Auth/FacultySignIn';
+import QRScanner from './components/Student/QRScanner';
+import AttendEvent from './components/Student/AttendEvent';
+import StudentProtectedRoute from './components/Auth/ProtectedRoute';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -140,6 +143,16 @@ function App() {
                         </ProtectedRoute>
                       } 
                     />
+                    <Route path="/scan" element={
+                      <StudentProtectedRoute>
+                        <QRScanner />
+                      </StudentProtectedRoute>
+                    } />
+                    <Route path="/attend/:eventId" element={
+                      <StudentProtectedRoute>
+                        <AttendEvent />
+                      </StudentProtectedRoute>
+                    } />
                   </Routes>
                 </>
               }

@@ -9,6 +9,14 @@ from datetime import datetime, timedelta
 import traceback
 from django.core.mail import send_mail
 from rest_framework.exceptions import PermissionDenied
+import qrcode
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from django.http import HttpResponse
+from uuid import UUID
+from PIL import Image
 
 # ---------------- School ViewSet ----------------
 class SchoolViewSet(viewsets.ReadOnlyModelViewSet):
@@ -388,3 +396,84 @@ class ClassEventViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(class_instance=class_instance)
         
         return queryset
+
+@api_view(['GET'])
+def generate_event_qr(request, event_id):
+    """Generate a QR code PDF for an event"""
+    try:
+        # Convert string to UUID if needed
+        event_uuid = UUID(event_id)
+        # Get the event
+        event = Event.objects.get(pk=event_uuid)
+        
+        # Create event attendance URL - this will be the data in the QR code
+        # We'll use a format like: /attend/{event_id}
+        attendance_url = f"{settings.FRONTEND_URL}/attend/{event_id}"
+        
+        # Generate QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(attendance_url)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Create a byte buffer for the image
+        img_buffer = io.BytesIO()
+        img.save(img_buffer)
+        img_buffer.seek(0)
+        
+        # Create a PDF
+        buffer = io.BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=letter)
+        
+        # Add event details to PDF
+        pdf.setFont("Helvetica-Bold", 16)
+        pdf.drawString(1*inch, 10*inch, f"Event: {event.name}")
+        pdf.setFont("Helvetica", 12)
+        
+        # Handle date formatting based on available fields
+        if hasattr(event, 'start_time') and event.start_time:
+            pdf.drawString(1*inch, 9.5*inch, f"Date: {event.start_time.strftime('%B %d, %Y')}")
+            pdf.drawString(1*inch, 9.0*inch, f"Time: {event.start_time.strftime('%I:%M %p')} - {event.end_time.strftime('%I:%M %p')}")
+        elif hasattr(event, 'date') and event.date:
+            # If you're using a 'date' field instead of start_time/end_time
+            pdf.drawString(1*inch, 9.5*inch, f"Date: {event.date.strftime('%B %d, %Y')}")
+        
+        # Add location if available
+        if hasattr(event, 'location') and event.location:
+            pdf.drawString(1*inch, 8.5*inch, f"Location: {event.location}")
+        
+        # Add instructions
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(1*inch, 8.0*inch, "Instructions:")
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(1*inch, 7.5*inch, "1. Print this QR code and display it in class")
+        pdf.drawString(1*inch, 7.0*inch, "2. Have students scan this code with the ClassAttend app")
+        pdf.drawString(1*inch, 6.5*inch, "3. Students must be logged in to record attendance")
+        
+        # Add QR code to PDF - FIX HERE
+        # Convert BytesIO to PIL Image for reportlab
+        img_pil = Image.open(img_buffer)
+        pdf.drawInlineImage(img_pil, 2.5*inch, 2*inch, width=4*inch, height=4*inch)
+        
+        # Save PDF
+        pdf.save()
+        
+        # Get the PDF value from the buffer
+        buffer.seek(0)
+        
+        # Create the HTTP response with PDF content
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="event_{event_id}_qr.pdf"'
+        
+        return response
+        
+    except Event.DoesNotExist:
+        return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

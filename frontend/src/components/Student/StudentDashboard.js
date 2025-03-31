@@ -10,12 +10,13 @@ import {
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const StudentDashboard = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const isAuthenticated = localStorage.getItem('studentId') !== null;
 
   const handleLogout = () => {
     // Clear the authentication token
@@ -105,19 +106,39 @@ const StudentDashboard = () => {
             />
           </Box>
 
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<QrCodeScannerIcon />}
-            sx={{
-              bgcolor: '#DEA514',
-              '&:hover': {
-                bgcolor: '#B88A10',
-              }
-            }}
-          >
-            Scan QR Code
-          </Button>
+          {isAuthenticated ? (
+            <Button
+              component={Link}
+              to="/scan"
+              variant="contained"
+              size="large"
+              startIcon={<QrCodeScannerIcon />}
+              sx={{
+                bgcolor: '#DEA514',
+                '&:hover': {
+                  bgcolor: '#B88A10',
+                }
+              }}
+            >
+              Scan QR Code
+            </Button>
+          ) : (
+            <Button
+              component={Link}
+              to="/student/signin"
+              variant="contained"
+              size="large"
+              startIcon={<QrCodeScannerIcon />}
+              sx={{
+                bgcolor: '#DEA514',
+                '&:hover': {
+                  bgcolor: '#B88A10',
+                }
+              }}
+            >
+              Sign In to Scan
+            </Button>
+          )}
 
           <Typography 
             variant="body2" 
@@ -125,7 +146,9 @@ const StudentDashboard = () => {
             color="text.secondary"
             sx={{ mt: 2 }}
           >
-            Click the button above to scan an event's QR code
+            {isAuthenticated 
+              ? "Click the button above to scan an event's QR code" 
+              : "You must be signed in to scan attendance QR codes"}
           </Typography>
         </Paper>
 

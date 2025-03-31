@@ -108,6 +108,11 @@ const EventsList = () => {
     return event.faculty === facultyId;
   };
 
+  const handleDownloadQrCode = (eventId) => {
+    // Use the full backend URL
+    window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
+  };
+
   return (
     <Box>
       <Box 
@@ -244,9 +249,10 @@ const EventsList = () => {
                         <Button
                           size="small"
                           startIcon={<QrCode2Icon />}
-                          sx={{ color: '#666' }}
+                          onClick={() => handleDownloadQrCode(event.id)}
+                          sx={{ color: '#666', mr: 1 }}
                         >
-                          QR Code
+                          Download QR Code
                         </Button>
                         
                         <Box>

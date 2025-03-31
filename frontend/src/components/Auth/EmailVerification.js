@@ -69,14 +69,16 @@ const EmailVerification = () => {
         setStatus('success');
         setMessage(response.data.message || 'Email verified successfully!');
         
-        // Redirect based on user type
-        setTimeout(() => {
-          if (userType === 'faculty') {
-            navigate('/faculty/dashboard', { replace: true });
-          } else {
-            navigate('/student/dashboard', { replace: true });
-          }
-        }, 3000);
+        // After successful verification, check for redirect
+        const params = new URLSearchParams(location.search);
+        const redirectUrl = params.get('redirect');
+        
+        // Handle redirect based on user type
+        if (userType === 'student') {
+          navigate(redirectUrl || '/student/dashboard');
+        } else if (userType === 'faculty') {
+          navigate(redirectUrl || '/faculty/dashboard');
+        }
       } catch (error) {
         setStatus('error');
         setMessage(error.response?.data?.error || 'Email verification failed. Please try again.');

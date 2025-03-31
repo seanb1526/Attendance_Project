@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -10,14 +10,31 @@ import {
   Container,
 } from '@mui/material';
 import axios from '../../utils/axios';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const StudentSignIn = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get the redirect URL from query parameters if it exists
+  const params = new URLSearchParams(location.search);
+  const redirectUrl = params.get('redirect') || '/student/dashboard';
+  
   const [formData, setFormData] = useState({
     email: '',
     studentId: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Update the useEffect to check for auth status
+  useEffect(() => {
+    // If already authenticated, redirect
+    const studentId = localStorage.getItem('studentId');
+    if (studentId) {
+      navigate(redirectUrl);
+    }
+  }, [navigate, redirectUrl]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
