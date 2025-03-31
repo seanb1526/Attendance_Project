@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -16,50 +16,16 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import EditIcon from '@mui/icons-material/Edit';
 import { useNavigate } from 'react-router-dom';
-
-// Mock data - replace with real data later
-const mockEvents = [
-  {
-    id: 1,
-    name: 'Guest Speaker: AI Ethics',
-    date: '2024-03-15',
-    time: '14:00',
-    location: 'Lecture Hall A',
-    description: 'A discussion on the ethical implications of AI in modern society',
-    assignedClasses: ['CS101-A']
-  },
-  {
-    id: 2,
-    name: 'Programming Workshop',
-    date: '2024-03-22',
-    time: '15:30',
-    location: 'Computer Lab 2',
-    description: 'Hands-on workshop on advanced programming concepts',
-    assignedClasses: []
-  },
-  {
-    id: 3,
-    name: 'Tech Industry Panel',
-    date: '2024-04-05',
-    time: '13:00',
-    location: 'Main Auditorium',
-    description: 'Industry professionals discuss current trends and career opportunities',
-    assignedClasses: ['CS201-B']
-  },
-];
-
-// Mock classes data - replace with real data later
-const mockClasses = [
-  { id: 1, name: 'Introduction to Computer Science', code: 'CS101-A' },
-  { id: 2, name: 'Data Structures', code: 'CS201-B' },
-  { id: 3, name: 'Algorithm Analysis', code: 'CS301-A' },
-];
+import axios from 'axios'; // Make sure to import axios
 
 const EventsList = () => {
   const theme = useTheme();
@@ -68,17 +34,78 @@ const EventsList = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState('');
+  
+  // Add new state variables for data fetching
+  const [events, setEvents] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch events and classes on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch events
+        const eventsResponse = await axios.get('/api/events/');
+        
+        // Fetch classes
+        const classesResponse = await axios.get('/api/classes/');
+        
+        setEvents(eventsResponse.data);
+        setClasses(classesResponse.data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   const handleAssignEvent = (event) => {
     setSelectedEvent(event);
     setAssignDialogOpen(true);
   };
 
-  const handleAssignSubmit = () => {
-    // Here you would make an API call to assign the event to the class
-    console.log(`Assigning event ${selectedEvent.id} to class ${selectedClass}`);
-    setAssignDialogOpen(false);
-    setSelectedClass('');
+  const handleAssignSubmit = async () => {
+    try {
+      // Make API call to assign the event to the class
+      await axios.post('/api/class-events/', {
+        class_instance: selectedClass,
+        event: selectedEvent.id
+      });
+      
+      // Refresh the events list to show updated assignments
+      const response = await axios.get('/api/events/');
+      setEvents(response.data);
+      
+      setAssignDialogOpen(false);
+      setSelectedClass('');
+    } catch (err) {
+      console.error('Error assigning event:', err);
+      // You could add error handling here
+    }
+  };
+
+  // Helper function to format date and time
+  const formatDateTime = (isoString) => {
+    if (!isoString) return { date: 'TBD', time: 'TBD' };
+    
+    const date = new Date(isoString);
+    return {
+      date: date.toLocaleDateString(),
+      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+  };
+
+  // Inside the component, add a helper function to check if the faculty created the event
+  const canEditEvent = (event) => {
+    const facultyId = localStorage.getItem('facultyId');
+    return event.faculty === facultyId;
   };
 
   return (
@@ -117,94 +144,143 @@ const EventsList = () => {
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
-        {mockEvents.map((event) => (
-          <Grid item xs={12} md={6} lg={4} key={event.id}>
-            <Paper
-              sx={{
-                p: 3,
-                bgcolor: '#FFFFFF',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 2, color: '#2C2C2C' }}>
-                {event.name}
+      {/* Display loading indicator */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress sx={{ color: '#DEA514' }} />
+        </Box>
+      )}
+
+      {/* Display error message if any */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Display events */}
+      {!loading && !error && (
+        <>
+          {events.length === 0 ? (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="body1" color="text.secondary">
+                No events found. Create your first event!
               </Typography>
-              
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <CalendarTodayIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
-                  <Typography variant="body2" color="text.secondary">
-                    {event.date} at {event.time}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <LocationOnIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
-                  <Typography variant="body2" color="text.secondary">
-                    {event.location}
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
-                {event.description}
-              </Typography>
-
-              {event.assignedClasses.length > 0 && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, color: '#666' }}>
-                    Assigned to:
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {event.assignedClasses.map((className) => (
-                      <Chip
-                        key={className}
-                        label={className}
-                        size="small"
-                        sx={{ bgcolor: '#DEA514', color: 'white' }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              )}
-
-              <Box sx={{ mt: 'auto', display: 'flex', gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<QrCode2Icon />}
-                  fullWidth
-                  sx={{
-                    borderColor: '#DEA514',
-                    color: '#DEA514',
-                    '&:hover': {
-                      borderColor: '#B88A10',
-                      color: '#B88A10',
-                    }
-                  }}
-                >
-                  View QR
-                </Button>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={() => handleAssignEvent(event)}
-                  sx={{
-                    bgcolor: '#DEA514',
-                    '&:hover': {
-                      bgcolor: '#B88A10',
-                    }
-                  }}
-                >
-                  Assign
-                </Button>
-              </Box>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => navigate('/faculty/events/add')}
+                sx={{
+                  mt: 2,
+                  bgcolor: '#DEA514',
+                  '&:hover': {
+                    bgcolor: '#B88A10',
+                  }
+                }}
+              >
+                Create New Event
+              </Button>
             </Paper>
-          </Grid>
-        ))}
-      </Grid>
+          ) : (
+            <Grid container spacing={3}>
+              {events.map((event) => {
+                const { date, time } = formatDateTime(event.date);
+                return (
+                  <Grid item xs={12} md={6} lg={4} key={event.id}>
+                    <Paper
+                      sx={{
+                        p: 3,
+                        bgcolor: '#FFFFFF',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <Typography variant="h6" sx={{ mb: 2, color: '#2C2C2C' }}>
+                        {event.name}
+                      </Typography>
+                      
+                      <Box sx={{ mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <CalendarTodayIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {date} at {time}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <LocationOnIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {event.location || 'No location specified'}
+                          </Typography>
+                        </Box>
+                      </Box>
 
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Check-in Window: {event.checkin_before_minutes > 0 ? `${event.checkin_before_minutes} min before` : 'Starts at event time'} 
+                          {' to '}
+                          {event.checkin_after_minutes > 0 ? `${event.checkin_after_minutes} min after` : 'event time only'}
+                        </Typography>
+                      </Box>
+
+                      <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+                        {event.description || 'No description available'}
+                      </Typography>
+
+                      {/* We'll need to implement class assignment logic here */}
+                      {/* This is placeholder for now */}
+                      <Box sx={{ mt: 'auto', pt: 2 }}>
+                        <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                          Assigned Classes:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {/* Replace with real assigned classes when we have them */}
+                          {/* Add logic to display assigned classes here */}
+                          <Chip label="Not implemented yet" size="small" />
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: '1px solid #eee', justifyContent: 'space-between' }}>
+                        <Button
+                          size="small"
+                          startIcon={<QrCode2Icon />}
+                          sx={{ color: '#666' }}
+                        >
+                          QR Code
+                        </Button>
+                        
+                        <Box>
+                          {/* Only show edit button if the faculty created this event */}
+                          {canEditEvent(event) && (
+                            <Button
+                              size="small"
+                              startIcon={<EditIcon />}
+                              onClick={() => navigate(`/faculty/events/${event.id}/edit`)}
+                              sx={{ color: '#666', mr: 1 }}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                          
+                          <Button
+                            size="small"
+                            onClick={() => handleAssignEvent(event)}
+                            sx={{ color: '#DEA514' }}
+                          >
+                            Assign to Class
+                          </Button>
+                        </Box>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
+        </>
+      )}
+
+      {/* Assign to Class Dialog */}
       <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)}>
         <DialogTitle>Assign Event to Class</DialogTitle>
         <DialogContent>
@@ -212,12 +288,12 @@ const EventsList = () => {
             <InputLabel>Select Class</InputLabel>
             <Select
               value={selectedClass}
-              label="Select Class"
               onChange={(e) => setSelectedClass(e.target.value)}
+              label="Select Class"
             >
-              {mockClasses.map((classItem) => (
-                <MenuItem key={classItem.id} value={classItem.code}>
-                  {classItem.name} ({classItem.code})
+              {classes.map((classItem) => (
+                <MenuItem key={classItem.id} value={classItem.id}>
+                  {classItem.name}
                 </MenuItem>
               ))}
             </Select>
@@ -226,14 +302,9 @@ const EventsList = () => {
         <DialogActions>
           <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
           <Button 
-            onClick={handleAssignSubmit}
-            variant="contained"
-            sx={{
-              bgcolor: '#DEA514',
-              '&:hover': {
-                bgcolor: '#B88A10',
-              }
-            }}
+            onClick={handleAssignSubmit} 
+            disabled={!selectedClass}
+            sx={{ color: '#DEA514' }}
           >
             Assign
           </Button>

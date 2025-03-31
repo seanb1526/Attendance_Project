@@ -1,13 +1,14 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import School, Student, Faculty, Event, Class, Attendance
-from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer
+from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent
+from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer, StudentSerializer
 from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
 import traceback
 from django.core.mail import send_mail
+from rest_framework.exceptions import PermissionDenied
 
 # ---------------- School ViewSet ----------------
 class SchoolViewSet(viewsets.ReadOnlyModelViewSet):
@@ -17,87 +18,67 @@ class SchoolViewSet(viewsets.ReadOnlyModelViewSet):
 # ---------------- Student ViewSet ----------------
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
-    serializer_class = StudentRegistrationSerializer
+    serializer_class = StudentSerializer
 
 # ---------------- Register Student ----------------
 @api_view(['POST'])
 def register_student(request):
+    # Validate request data
     serializer = StudentRegistrationSerializer(data=request.data)
     if serializer.is_valid():
-        try:
-            student = serializer.save(email_verified=False)
-            token = jwt.encode({
-                'student_id': str(student.id),
-                'exp': datetime.utcnow() + timedelta(hours=24)
-            }, settings.SECRET_KEY, algorithm='HS256')
-
-            verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-
-            html_message = f"""
-            <h3>Welcome to ClassAttend!</h3>
-            <p>Thank you for registering. Please click the button below to verify your email address:</p>
-            <p><a href="{verification_url}" style="background-color: #DEA514; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
-            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-            <p>{verification_url}</p>
-            """
-            
-            send_mail(
-                subject="Verify your ClassAttend account",
-                message=f"Welcome to ClassAttend! Click the following link to verify your email: {verification_url}",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[student.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-
-            return Response({
-                'message': 'Registration successful. Please check your email to verify your account.'
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            traceback.print_exc()
-            return Response({
-                'error': f'Registration error: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Create student with email_verified set to False
+        student = serializer.save(email_verified=False)
+        
+        # Simply return the success response with the student ID
+        return Response({
+            'message': 'Registration successful.',
+            'student_id': str(student.id)
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ---------------- Verify Email ----------------
 @api_view(['GET'])
 def verify_email(request):
-    token = request.GET.get('token')
-    user_type = request.GET.get('type', 'student')  # Default to student for backward compatibility
+    token = request.query_params.get('token')
+    user_type = request.query_params.get('type', 'student')
     
     if not token:
-        return Response({'error': 'No verification token provided'}, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response({'error': 'No token provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
         
         if user_type == 'faculty':
             faculty_id = payload.get('faculty_id')
-            if not faculty_id:
-                raise jwt.InvalidTokenError('Invalid faculty token')
-            user = Faculty.objects.get(id=faculty_id)
+            faculty = Faculty.objects.get(id=faculty_id)
+            faculty.email_verified = True
+            faculty.save()
+            
+            return Response({
+                'message': 'Email verified successfully. You can now sign in.',
+                'faculty_id': faculty_id,
+                'school_id': str(faculty.school.id)
+            })
         else:
+            # Handle student email verification
             student_id = payload.get('student_id')
             if not student_id:
                 raise jwt.InvalidTokenError('Invalid student token')
             user = Student.objects.get(id=student_id)
 
-        user.email_verified = True
-        user.save()
+            user.email_verified = True
+            user.save()
 
-        return Response({'message': 'Email verified successfully'})
+            return Response({'message': 'Email verified successfully'})
     except jwt.ExpiredSignatureError:
         return Response({'error': 'Verification link has expired'}, status=status.HTTP_400_BAD_REQUEST)
-    except jwt.InvalidTokenError:
-        return Response({'error': 'Invalid verification token'}, status=status.HTTP_400_BAD_REQUEST)
-    except (Student.DoesNotExist, Faculty.DoesNotExist):
+    except (jwt.DecodeError, jwt.InvalidTokenError):
+        return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+    except (Faculty.DoesNotExist, Student.DoesNotExist):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        traceback.print_exc()
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': f'Verification error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ---------------- Student Sign In ----------------
 @api_view(['POST'])
@@ -152,6 +133,32 @@ class FacultyViewSet(viewsets.ModelViewSet):
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
+    
+    def perform_update(self, serializer):
+        # Ensure only the creator can update
+        event = self.get_object()
+        request_faculty_id = self.request.user.id  # If using token auth
+        
+        # For non-token auth, you might need to extract from query params or request data
+        faculty_id = self.request.query_params.get('faculty_id')
+        if not faculty_id:
+            faculty_id = self.request.data.get('faculty')
+        
+        if str(event.faculty.id) != str(faculty_id):
+            raise PermissionDenied("You don't have permission to edit this event")
+        
+        serializer.save()
+    
+    def perform_destroy(self, instance):
+        # Ensure only the creator can delete
+        request_faculty_id = self.request.query_params.get('faculty_id')
+        if not request_faculty_id:
+            request_faculty_id = self.request.data.get('faculty')
+            
+        if str(instance.faculty.id) != str(request_faculty_id):
+            raise PermissionDenied("You don't have permission to delete this event")
+        
+        instance.delete()
 
 # ---------------- Class ViewSet ----------------
 class ClassViewSet(viewsets.ModelViewSet):
@@ -258,3 +265,126 @@ def faculty_signin(request):
         return Response({
             'error': f'Sign in error: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ---------------- Create Class ----------------
+@api_view(['POST'])
+def create_class(request):
+    # Get the faculty member from the authentication token
+    faculty_id = request.data.get('faculty_id')
+    
+    try:
+        faculty = Faculty.objects.get(id=faculty_id)
+        
+        # Create the class
+        class_data = {
+            'name': request.data.get('name'),
+            'faculty': faculty.id,
+            'school': faculty.school.id
+        }
+        
+        serializer = ClassSerializer(data=class_data)
+        if serializer.is_valid():
+            new_class = serializer.save()
+            
+            # If students are provided, add them to the class
+            student_ids = request.data.get('students', [])
+            for student_id in student_ids:
+                try:
+                    student = Student.objects.get(id=student_id)
+                    ClassStudent.objects.create(
+                        class_instance=new_class,
+                        student=student
+                    )
+                except Student.DoesNotExist:
+                    continue
+            
+            return Response({
+                'message': 'Class created successfully',
+                'class': ClassSerializer(new_class).data
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Faculty.DoesNotExist:
+        return Response({
+            'error': 'Faculty not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'error': f'Error creating class: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def lookup_student(request):
+    """Look up a student by email"""
+    email = request.query_params.get('email')
+    
+    if not email:
+        return Response({'error': 'Email parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        student = Student.objects.get(email=email)
+        return Response({
+            'id': str(student.id),
+            'email': student.email,
+            'first_name': student.first_name,
+            'last_name': student.last_name,
+            'student_id': student.student_id
+        })
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+
+# ---------------- Update Class ----------------
+@api_view(['PUT'])
+def update_class(request, pk):
+    try:
+        class_instance = Class.objects.get(pk=pk)
+        
+        # Update basic class information
+        class_instance.name = request.data.get('name', class_instance.name)
+        
+        # Update description/metadata
+        if 'description' in request.data:
+            class_instance.description = request.data['description']
+        
+        class_instance.save()
+        
+        # Update students if provided
+        if 'students' in request.data:
+            # Remove existing student associations
+            ClassStudent.objects.filter(class_instance=class_instance).delete()
+            
+            # Add new student associations
+            student_ids = request.data.get('students', [])
+            for student_id in student_ids:
+                try:
+                    student = Student.objects.get(id=student_id)
+                    ClassStudent.objects.create(
+                        class_instance=class_instance,
+                        student=student
+                    )
+                except Student.DoesNotExist:
+                    continue
+        
+        return Response({
+            'message': 'Class updated successfully',
+            'class': ClassSerializer(class_instance).data
+        })
+    except Class.DoesNotExist:
+        return Response({'error': 'Class not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': f'Error updating class: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ---------------- Class Event ViewSet ----------------
+class ClassEventViewSet(viewsets.ModelViewSet):
+    queryset = ClassEvent.objects.all()
+    serializer_class = ClassEventSerializer
+    
+    def get_queryset(self):
+        queryset = ClassEvent.objects.all()
+        class_instance = self.request.query_params.get('class_instance', None)
+        
+        if class_instance is not None:
+            queryset = queryset.filter(class_instance=class_instance)
+        
+        return queryset

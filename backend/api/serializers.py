@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import School, Student, Faculty, Event, Class, Attendance
+from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent
 
 # ---------------- School Serializer ----------------
 class SchoolSerializer(serializers.ModelSerializer):
@@ -11,7 +11,7 @@ class SchoolSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['id', 'student_id', 'first_name', 'last_name', 'email', 'school']
+        fields = ['id', 'student_id', 'first_name', 'last_name', 'email', 'email_verified', 'school']
 
 # ---------------- Student Registration Serializer ----------------
 class StudentRegistrationSerializer(serializers.ModelSerializer):
@@ -71,16 +71,30 @@ class FacultyRegistrationSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = ['id', 'name', 'date', 'location', 'qr_code']
+        fields = ['id', 'name', 'description', 'date', 'location', 'faculty', 'school', 
+                 'checkin_before_minutes', 'checkin_after_minutes']
 
 # ---------------- Class Serializer ----------------
 class ClassSerializer(serializers.ModelSerializer):
+    students = serializers.SerializerMethodField()
+    
     class Meta:
         model = Class
-        fields = ['id', 'name', 'faculty', 'students', 'events']
+        fields = ['id', 'name', 'faculty', 'school', 'students']
+        
+    def get_students(self, obj):
+        class_students = ClassStudent.objects.filter(class_instance=obj)
+        student_ids = [cs.student.id for cs in class_students]
+        return student_ids
 
 # ---------------- Attendance Serializer ----------------
 class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attendance
         fields = ['id', 'student', 'event', 'timestamp']
+
+# ---------------- Class Event Serializer ----------------
+class ClassEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassEvent
+        fields = ['id', 'class_instance', 'event']

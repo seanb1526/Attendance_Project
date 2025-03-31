@@ -3,6 +3,24 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Box, Typography, Paper, CircularProgress, Alert } from '@mui/material';
 import axios from '../../utils/axios';
 
+// Function to decode JWT token
+const decodeToken = (token) => {
+  try {
+    // Split the token into parts
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    // Decode the payload (middle part)
+    const payload = parts[1];
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(normalized);
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return null;
+  }
+};
+
 const EmailVerification = () => {
   const [status, setStatus] = useState('verifying'); // 'verifying', 'success', or 'error'
   const [message, setMessage] = useState('');
@@ -30,6 +48,24 @@ const EmailVerification = () => {
         localStorage.setItem('authToken', token);
         localStorage.setItem('userType', userType); // Store user type for redirection
         
+        // Save IDs from response or decoded token
+        if (userType === 'faculty') {
+          // Option 1: Get from response if included
+          if (response.data.faculty_id) {
+            localStorage.setItem('facultyId', response.data.faculty_id);
+            localStorage.setItem('schoolId', response.data.school_id);
+          } 
+          // Option 2: Decode from token
+          else {
+            const decodedToken = decodeToken(token);
+            if (decodedToken && decodedToken.faculty_id) {
+              localStorage.setItem('facultyId', decodedToken.faculty_id);
+            }
+          }
+        } else if (userType === 'student' && response.data.student_id) {
+          localStorage.setItem('studentId', response.data.student_id);
+        }
+        
         setStatus('success');
         setMessage(response.data.message || 'Email verified successfully!');
         
@@ -43,11 +79,7 @@ const EmailVerification = () => {
         }, 3000);
       } catch (error) {
         setStatus('error');
-        setMessage(
-          error.response?.data?.error || 
-          'Verification failed. Please try again or contact support.'
-        );
-        console.error('Verification error:', error);
+        setMessage(error.response?.data?.error || 'Email verification failed. Please try again.');
       }
     };
 

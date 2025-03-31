@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -10,23 +10,41 @@ import {
   useTheme,
   useMediaQuery,
   IconButton,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
+import axios from '../../../utils/axios';
 
 const AddClass = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   
-  const [students, setStudents] = React.useState([]);
-  const [newStudent, setNewStudent] = React.useState({
+  // Class state
+  const [classData, setClassData] = useState({
+    name: '',
+    code: '',
+    section: '',
+    semester: '',
+    description: '',
+  });
+
+  // Students state
+  const [students, setStudents] = useState([]);
+  const [newStudent, setNewStudent] = useState({
     firstName: '',
     lastName: '',
     studentId: '',
     email: ''
   });
   
+  // Notification states
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -51,6 +69,119 @@ const AddClass = () => {
     }
   };
 
+  const handleClassDataChange = (field) => (event) => {
+    setClassData({
+      ...classData,
+      [field]: event.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    
+    // Form validation
+    if (!classData.name) {
+      setError('Class name is required');
+      setOpenSnackbar(true);
+      return;
+    }
+    
+    try {
+      // Get faculty ID from localStorage or session
+      const facultyId = localStorage.getItem('facultyId');
+      
+      if (!facultyId) {
+        setError('You must be logged in to create a class');
+        setOpenSnackbar(true);
+        return;
+      }
+      
+      // Prepare class metadata (for fields not in the model)
+      const metadata = {
+        code: classData.code,
+        section: classData.section,
+        semester: classData.semester,
+        description: classData.description
+      };
+      
+      // Register new students first if they don't exist
+      const schoolId = localStorage.getItem('schoolId');
+      const studentIds = [];
+      
+      // Process each student
+      for (const student of students) {
+        try {
+          // Use the dedicated lookup endpoint to check if student exists by email
+          const lookupResponse = await axios.get(`/api/student/lookup/?email=${student.email}`);
+          
+          // If we get a successful response, the student exists
+          studentIds.push(lookupResponse.data.id);
+        } catch (error) {
+          // If we get a 404, the student doesn't exist, so register them
+          if (error.response && error.response.status === 404) {
+            try {
+              const registerResponse = await axios.post('/api/student/register/', {
+                first_name: student.firstName,
+                last_name: student.lastName,
+                student_id: student.studentId,
+                email: student.email,
+                school: schoolId,
+              });
+              
+              // Get the student ID from the updated response
+              if (registerResponse.data && registerResponse.data.student_id) {
+                studentIds.push(registerResponse.data.student_id);
+              }
+            } catch (registerError) {
+              console.error(`Error registering student ${student.email}:`, registerError);
+            }
+          } else {
+            console.error(`Error looking up student ${student.email}:`, error);
+          }
+        }
+      }
+      
+      console.log('Student IDs to be added to class:', studentIds);
+      
+      // Create the class with the /api/class/create/ endpoint
+      const classResponse = await axios.post('/api/class/create/', {
+        name: classData.name,
+        faculty_id: facultyId,
+        metadata: JSON.stringify(metadata),
+        students: studentIds
+      });
+      
+      setSuccess('Class created successfully!');
+      setOpenSnackbar(true);
+      
+      // Reset form
+      setClassData({
+        name: '',
+        code: '',
+        section: '',
+        semester: '',
+        description: '',
+      });
+      setStudents([]);
+      
+      // Navigate back after a short delay to show success message
+      setTimeout(() => {
+        navigate('/faculty/classes');
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error creating class:', error.response?.data || error);
+      setError(error.response?.data?.error || 'Failed to create class. Please try again.');
+      setOpenSnackbar(true);
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
+  };
+
   return (
     <Box>
       <Typography 
@@ -64,193 +195,217 @@ const AddClass = () => {
         Add New Class
       </Typography>
 
+      <Snackbar 
+        open={openSnackbar} 
+        autoHideDuration={6000} 
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={error ? "error" : "success"} 
+          sx={{ width: '100%' }}
+        >
+          {error || success}
+        </Alert>
+      </Snackbar>
+
       <Paper sx={{ 
         p: 4, 
         maxWidth: 800, 
         mx: 'auto',
         bgcolor: '#FFFFFF'
       }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Class Name"
-              placeholder="e.g., Introduction to Computer Science"
-              required
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Class Code"
-              placeholder="e.g., CS101"
-              required
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Section"
-              placeholder="e.g., A"
-              required
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              select
-              label="Semester"
-              defaultValue=""
-              required
-            >
-              <MenuItem value="Spring 2024">Spring 2024</MenuItem>
-              <MenuItem value="Summer 2024">Summer 2024</MenuItem>
-              <MenuItem value="Fall 2024">Fall 2024</MenuItem>
-            </TextField>
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Description"
-              placeholder="Enter class description..."
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Add Students</Typography>
+        <form onSubmit={handleSubmit}>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Class Name"
+                placeholder="e.g., Introduction to Computer Science"
+                required
+                value={classData.name}
+                onChange={handleClassDataChange('name')}
+              />
+            </Grid>
             
-            <Box sx={{ mb: 3 }}>
-              <Button
-                variant="outlined"
-                component="label"
-                sx={{ mr: 2 }}
-              >
-                Import CSV
-                <input
-                  type="file"
-                  hidden
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                />
-              </Button>
-              <Typography variant="caption" color="text.secondary">
-                CSV format: firstName, lastName, studentId, email
-              </Typography>
-            </Box>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Class Code"
+                placeholder="e.g., CS101"
+                value={classData.code}
+                onChange={handleClassDataChange('code')}
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Section"
+                placeholder="e.g., A"
+                value={classData.section}
+                onChange={handleClassDataChange('section')}
+              />
+            </Grid>
 
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={3}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  value={newStudent.firstName}
-                  onChange={(e) => setNewStudent({...newStudent, firstName: e.target.value})}
-                />
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  value={newStudent.lastName}
-                  onChange={(e) => setNewStudent({...newStudent, lastName: e.target.value})}
-                />
-              </Grid>
-              <Grid item xs={12} sm={2}>
-                <TextField
-                  fullWidth
-                  label="Student ID"
-                  value={newStudent.studentId}
-                  onChange={(e) => setNewStudent({...newStudent, studentId: e.target.value})}
-                />
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  value={newStudent.email}
-                  onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
-                />
-              </Grid>
-              <Grid item xs={12} sm={1}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                select
+                label="Semester"
+                value={classData.semester}
+                onChange={handleClassDataChange('semester')}
+              >
+                <MenuItem value="Spring 2024">Spring 2024</MenuItem>
+                <MenuItem value="Summer 2024">Summer 2024</MenuItem>
+                <MenuItem value="Fall 2024">Fall 2024</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Description"
+                placeholder="Enter class description..."
+                value={classData.description}
+                onChange={handleClassDataChange('description')}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2 }}>Add Students</Typography>
+              
+              <Box sx={{ mb: 3 }}>
                 <Button
+                  variant="outlined"
+                  component="label"
+                  sx={{ mr: 2 }}
+                >
+                  Import CSV
+                  <input
+                    type="file"
+                    hidden
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                  />
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  CSV format: firstName, lastName, studentId, email
+                </Typography>
+              </Box>
+
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    fullWidth
+                    label="First Name"
+                    value={newStudent.firstName}
+                    onChange={(e) => setNewStudent({...newStudent, firstName: e.target.value})}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    fullWidth
+                    label="Last Name"
+                    value={newStudent.lastName}
+                    onChange={(e) => setNewStudent({...newStudent, lastName: e.target.value})}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={2}>
+                  <TextField
+                    fullWidth
+                    label="Student ID"
+                    value={newStudent.studentId}
+                    onChange={(e) => setNewStudent({...newStudent, studentId: e.target.value})}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    value={newStudent.email}
+                    onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={1}>
+                  <Button
+                    variant="contained"
+                    onClick={handleAddStudent}
+                    sx={{
+                      height: '100%',
+                      bgcolor: '#DEA514',
+                      '&:hover': {
+                        bgcolor: '#B88A10',
+                      }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </Grid>
+              </Grid>
+
+              {students.length > 0 && (
+                <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Added Students ({students.length})
+                  </Typography>
+                  {students.map((student, index) => (
+                    <Box key={index} sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      py: 1,
+                      borderBottom: index < students.length - 1 ? '1px solid #eee' : 'none'
+                    }}>
+                      <Typography>
+                        {student.firstName} {student.lastName} ({student.studentId})
+                      </Typography>
+                      <IconButton 
+                        size="small"
+                        onClick={() => setStudents(students.filter((_, i) => i !== index))}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Paper>
+              )}
+            </Grid>
+
+            <Grid item xs={12}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2,
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'flex-end' 
+              }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate('/faculty/classes')}
+                  fullWidth={isMobile}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
                   variant="contained"
-                  onClick={handleAddStudent}
+                  fullWidth={isMobile}
                   sx={{
-                    height: '100%',
                     bgcolor: '#DEA514',
                     '&:hover': {
                       bgcolor: '#B88A10',
                     }
                   }}
                 >
-                  Add
+                  Create Class
                 </Button>
-              </Grid>
+              </Box>
             </Grid>
-
-            {students.length > 0 && (
-              <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  Added Students ({students.length})
-                </Typography>
-                {students.map((student, index) => (
-                  <Box key={index} sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    py: 1,
-                    borderBottom: index < students.length - 1 ? '1px solid #eee' : 'none'
-                  }}>
-                    <Typography>
-                      {student.firstName} {student.lastName} ({student.studentId})
-                    </Typography>
-                    <IconButton 
-                      size="small"
-                      onClick={() => setStudents(students.filter((_, i) => i !== index))}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                ))}
-              </Paper>
-            )}
           </Grid>
-
-          <Grid item xs={12}>
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2,
-              flexDirection: isMobile ? 'column' : 'row',
-              justifyContent: 'flex-end' 
-            }}>
-              <Button
-                variant="outlined"
-                onClick={() => navigate('/faculty/classes')}
-                fullWidth={isMobile}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="contained"
-                fullWidth={isMobile}
-                sx={{
-                  bgcolor: '#DEA514',
-                  '&:hover': {
-                    bgcolor: '#B88A10',
-                  }
-                }}
-              >
-                Create Class
-              </Button>
-            </Box>
-          </Grid>
-        </Grid>
+        </form>
       </Paper>
     </Box>
   );

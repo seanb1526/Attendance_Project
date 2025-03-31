@@ -31,6 +31,8 @@ import AddEvent from './Events/AddEvent';
 import ClassesList from './Classes/ClassesList';
 import AddClass from './Classes/AddClass';
 import ClassDetails from './Classes/ClassDetails';
+import EditClass from './Classes/EditClass';
+import EditEvent from './Events/EditEvent';
 
 const drawerWidth = 240;
 
@@ -274,9 +276,11 @@ const FacultyDashboard = () => {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="events" element={<EventsList />} />
             <Route path="events/add" element={<AddEvent />} />
+            <Route path="events/:id/edit" element={<EditEvent />} />
             <Route path="classes" element={<ClassesList />} />
             <Route path="classes/add" element={<AddClass />} />
             <Route path="classes/:id" element={<ClassDetails />} />
+            <Route path="classes/:id/edit" element={<EditClass />} />
           </Routes>
         </Container>
       </Box>
