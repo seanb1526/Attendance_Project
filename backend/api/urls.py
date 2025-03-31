@@ -9,6 +9,7 @@ router.register(r'students', views.StudentViewSet)
 router.register(r'events', views.EventViewSet)
 router.register(r'classes', views.ClassViewSet)
 router.register(r'attendance', views.AttendanceViewSet)
+router.register(r'class-events', views.ClassEventViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),  # API Endpoints for all models

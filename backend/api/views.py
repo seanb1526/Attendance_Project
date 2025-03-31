@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent
-from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer
+from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent
+from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer
 from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
@@ -347,3 +347,17 @@ def update_class(request, pk):
         return Response({'error': 'Class not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': f'Error updating class: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ---------------- Class Event ViewSet ----------------
+class ClassEventViewSet(viewsets.ModelViewSet):
+    queryset = ClassEvent.objects.all()
+    serializer_class = ClassEventSerializer
+    
+    def get_queryset(self):
+        queryset = ClassEvent.objects.all()
+        class_instance = self.request.query_params.get('class_instance', None)
+        
+        if class_instance is not None:
+            queryset = queryset.filter(class_instance=class_instance)
+        
+        return queryset

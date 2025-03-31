@@ -39,71 +39,96 @@ const ClassDetails = () => {
   useEffect(() => {
     const fetchClassDetails = async () => {
       try {
-        // Fetch the class data
+        setLoading(true);
+        
+        // Fetch class details
         const classResponse = await axios.get(`/api/classes/${id}/`);
+        setClassData(classResponse.data);
         
-        // Parse metadata if available
-        let metadata = {
-          code: '',
-          section: '',
-          semester: 'Current Semester',
-          description: ''
-        };
-        
+        // Fetch class events - use the class-events endpoint
         try {
-          if (classResponse.data.description) {
-            const parsedMetadata = JSON.parse(classResponse.data.description);
-            metadata = { ...metadata, ...parsedMetadata };
-          }
-        } catch (e) {
-          console.error('Error parsing class metadata:', e);
-        }
-        
-        // Combine the class data with the parsed metadata
-        const enhancedClassData = {
-          ...classResponse.data,
-          code: metadata.code,
-          section: metadata.section,
-          semester: metadata.semester,
-          fullDescription: metadata.description
-        };
-        
-        setClassData(enhancedClassData);
-        
-        // Fetch students enrolled in this class
-        if (Array.isArray(classResponse.data.students) && classResponse.data.students.length > 0) {
-          const studentPromises = classResponse.data.students.map(studentId => 
-            axios.get(`/api/students/${studentId}/`)
-          );
+          const eventsResponse = await axios.get(`/api/class-events/?class_instance=${id}`);
           
-          try {
-            const studentResponses = await Promise.all(studentPromises);
-            const studentData = studentResponses.map(res => res.data);
-            setStudents(studentData);
-          } catch (studentError) {
-            console.error('Error fetching students:', studentError);
-            setStudents([]);
+          if (eventsResponse.data && eventsResponse.data.length > 0) {
+            // Extract event IDs and fetch each event
+            const eventPromises = eventsResponse.data.map(item => 
+              axios.get(`/api/events/${item.event}/`)
+            );
+            
+            const eventResults = await Promise.all(eventPromises);
+            setEvents(eventResults.map(res => res.data));
+          } else {
+            setEvents([]);
           }
-        }
-        
-        // Fetch events associated with this class
-        try {
-          const eventsResponse = await axios.get(`/api/events/?class=${id}`);
-          setEvents(eventsResponse.data || []);
-        } catch (eventError) {
-          console.error('Error fetching events:', eventError);
+        } catch (eventsErr) {
+          console.error('Error fetching class events:', eventsErr);
           setEvents([]);
         }
         
+        // Fetch students for this class
+        // Instead of using a dedicated endpoint, we'll use the fact that students
+        // should be part of the class data or available through a relationship
+        try {
+          // One of these approaches should work depending on your API structure:
+          
+          // Approach 1: If students are included in the class response
+          if (classResponse.data.students && Array.isArray(classResponse.data.students)) {
+            // If student IDs are included, fetch each student's details
+            const studentPromises = classResponse.data.students.map(studentId => 
+              axios.get(`/api/students/${studentId}/`)
+            );
+            
+            const studentResults = await Promise.all(studentPromises);
+            setStudents(studentResults.map(res => ({
+              id: res.data.id,
+              firstName: res.data.first_name,
+              lastName: res.data.last_name,
+              studentId: res.data.student_id,
+              email: res.data.email
+            })));
+          } 
+          // Approach 2: Use class-student relationship API if available
+          else {
+            try {
+              const studentsResponse = await axios.get(`/api/class-students/?class=${id}`);
+              
+              if (studentsResponse.data && studentsResponse.data.length > 0) {
+                const studentPromises = studentsResponse.data.map(item => 
+                  axios.get(`/api/students/${item.student}/`)
+                );
+                
+                const studentResults = await Promise.all(studentPromises);
+                setStudents(studentResults.map(res => ({
+                  id: res.data.id,
+                  firstName: res.data.first_name,
+                  lastName: res.data.last_name,
+                  studentId: res.data.student_id,
+                  email: res.data.email
+                })));
+              } else {
+                setStudents([]);
+              }
+            } catch (classStudentsErr) {
+              console.error('Error fetching class-students:', classStudentsErr);
+              setStudents([]);
+            }
+          }
+        } catch (studentsErr) {
+          console.error('Error processing students:', studentsErr);
+          setStudents([]);
+        }
+        
         setLoading(false);
-      } catch (error) {
-        console.error('Error fetching class details:', error);
-        setError('Failed to load class details. Please try again later.');
+      } catch (err) {
+        console.error('Error fetching class details:', err);
+        setError('Failed to load class details. Please try again.');
         setLoading(false);
       }
     };
     
-    fetchClassDetails();
+    if (id) {
+      fetchClassDetails();
+    }
   }, [id]);
 
   const handleTabChange = (event, newValue) => {
@@ -295,11 +320,11 @@ const ClassDetails = () => {
                     <React.Fragment key={student.id}>
                       <ListItem>
                         <ListItemText 
-                          primary={`${student.first_name} ${student.last_name}`}
+                          primary={`${student.firstName} ${student.lastName}`}
                           secondary={student.email}
                         />
                         <Chip 
-                          label={student.student_id}
+                          label={student.studentId}
                           size="small"
                           sx={{ bgcolor: '#f0f0f0' }}
                         />
