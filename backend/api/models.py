@@ -55,6 +55,8 @@ class Event(models.Model):
     location = models.CharField(max_length=255, blank=True, null=True)
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE)
     school = models.ForeignKey(School, on_delete=models.CASCADE)
+    checkin_before_minutes = models.IntegerField(default=15)
+    checkin_after_minutes = models.IntegerField(default=15)
 
     def __str__(self):
         return self.name

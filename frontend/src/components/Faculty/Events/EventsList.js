@@ -23,6 +23,7 @@ import AddIcon from '@mui/icons-material/Add';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import EditIcon from '@mui/icons-material/Edit';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios'; // Make sure to import axios
 
@@ -99,6 +100,12 @@ const EventsList = () => {
       date: date.toLocaleDateString(),
       time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
+  };
+
+  // Inside the component, add a helper function to check if the faculty created the event
+  const canEditEvent = (event) => {
+    const facultyId = localStorage.getItem('facultyId');
+    return event.faculty === facultyId;
   };
 
   return (
@@ -208,6 +215,14 @@ const EventsList = () => {
                         </Box>
                       </Box>
 
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Check-in Window: {event.checkin_before_minutes > 0 ? `${event.checkin_before_minutes} min before` : 'Starts at event time'} 
+                          {' to '}
+                          {event.checkin_after_minutes > 0 ? `${event.checkin_after_minutes} min after` : 'event time only'}
+                        </Typography>
+                      </Box>
+
                       <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
                         {event.description || 'No description available'}
                       </Typography>
@@ -233,13 +248,28 @@ const EventsList = () => {
                         >
                           QR Code
                         </Button>
-                        <Button
-                          size="small"
-                          onClick={() => handleAssignEvent(event)}
-                          sx={{ color: '#DEA514' }}
-                        >
-                          Assign to Class
-                        </Button>
+                        
+                        <Box>
+                          {/* Only show edit button if the faculty created this event */}
+                          {canEditEvent(event) && (
+                            <Button
+                              size="small"
+                              startIcon={<EditIcon />}
+                              onClick={() => navigate(`/faculty/events/${event.id}/edit`)}
+                              sx={{ color: '#666', mr: 1 }}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                          
+                          <Button
+                            size="small"
+                            onClick={() => handleAssignEvent(event)}
+                            sx={{ color: '#DEA514' }}
+                          >
+                            Assign to Class
+                          </Button>
+                        </Box>
                       </Box>
                     </Paper>
                   </Grid>

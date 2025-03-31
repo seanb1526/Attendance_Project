@@ -22,6 +22,10 @@ import EventIcon from '@mui/icons-material/Event';
 import PeopleIcon from '@mui/icons-material/People';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
 
 const ClassDetails = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -261,55 +265,145 @@ const ClassDetails = () => {
         </Tabs>
 
         <Box sx={{ p: 2 }}>
-          {tabValue === 0 ? (
-            events.length > 0 ? (
-              <Grid container spacing={3}>
-                {events.map((event) => (
-                  <Grid item xs={12} md={6} key={event.id}>
-                    <Paper sx={{ 
-                      p: 3,
-                      bgcolor: '#FFFFFF',
-                      boxShadow: 1,
-                    }}>
-                      <Typography variant="h6">{event.name}</Typography>
-                      <Typography variant="subtitle2" sx={{ color: '#666', my: 1 }}>
-                        Date: {new Date(event.date).toLocaleDateString()}
-                      </Typography>
-                      {event.description && (
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          {event.description}
-                        </Typography>
-                      )}
-                      {event.attendance_count !== undefined && (
-                        <Typography variant="body2">
-                          Attendance: {event.attendance_count} students
-                        </Typography>
-                      )}
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="body1" color="text.secondary">
-                  No events created for this class yet.
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => navigate('/faculty/events/add', { state: { classId: id } })}
-                  sx={{
-                    mt: 2,
-                    bgcolor: '#DEA514',
-                    '&:hover': {
-                      bgcolor: '#B88A10',
-                    }
-                  }}
-                >
-                  Create Event
-                </Button>
-              </Box>
-            )
-          ) : (
+          {tabValue === 0 && (
+            <>
+              {events.length > 0 ? (
+                <Grid container spacing={3} sx={{ mt: 1 }}>
+                  {events.map((event) => {
+                    // Format date and time for display
+                    const eventDate = new Date(event.date);
+                    const formattedDate = eventDate.toLocaleDateString();
+                    const formattedTime = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    return (
+                      <Grid item xs={12} sm={6} md={4} key={event.id}>
+                        <Paper
+                          sx={{
+                            p: 3,
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            bgcolor: '#FFFFFF',
+                            borderLeft: '4px solid #DEA514',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                            '&:hover': {
+                              transform: 'translateY(-4px)',
+                              boxShadow: '0 6px 12px rgba(0,0,0,0.12)',
+                            }
+                          }}
+                        >
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              color: '#2C2C2C',
+                              fontWeight: 'bold',
+                              mb: 2,
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {event.name}
+                          </Typography>
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <CalendarTodayIcon sx={{ fontSize: 18, mr: 1, color: '#666' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {formattedDate}
+                            </Typography>
+                          </Box>
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <AccessTimeIcon sx={{ fontSize: 18, mr: 1, color: '#666' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {formattedTime}
+                            </Typography>
+                          </Box>
+                          
+                          {event.location && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                              <LocationOnIcon sx={{ fontSize: 18, mr: 1, color: '#666' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                {event.location}
+                              </Typography>
+                            </Box>
+                          )}
+                          
+                          {event.description && (
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary" 
+                              sx={{ 
+                                mb: 2,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                              }}
+                            >
+                              {event.description}
+                            </Typography>
+                          )}
+                          
+                          <Box sx={{ 
+                            mt: 'auto', 
+                            pt: 2, 
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            borderTop: '1px solid #eee',
+                          }}>
+                            <Chip 
+                              size="small" 
+                              label={
+                                event.checkin_before_minutes > 0 
+                                  ? `Check-in: ${event.checkin_before_minutes} min before` 
+                                  : "No early check-in"
+                              }
+                              sx={{ 
+                                bgcolor: '#f0f0f0',
+                                fontSize: '0.7rem',
+                              }} 
+                            />
+                            
+                            <Button
+                              size="small"
+                              startIcon={<QrCode2Icon />}
+                              sx={{
+                                color: '#DEA514',
+                                fontSize: '0.75rem',
+                              }}
+                            >
+                              QR Code
+                            </Button>
+                          </Box>
+                        </Paper>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No events assigned to this class yet.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate('/faculty/events/', { state: { classId: id } })}
+                    sx={{
+                      mt: 2,
+                      bgcolor: '#DEA514',
+                      '&:hover': {
+                        bgcolor: '#B88A10',
+                      }
+                    }}
+                  >
+                    View Events
+                  </Button>
+                </Box>
+              )}
+            </>
+          )}
+          {tabValue === 1 ? (
             students.length > 0 ? (
               <Paper sx={{ 
                 bgcolor: '#FFFFFF',
@@ -354,6 +448,12 @@ const ClassDetails = () => {
                 </Button>
               </Box>
             )
+          ):(
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1" color="text.secondary">
+                Events assigned to this class will appear here.
+              </Typography>
+            </Box>
           )}
         </Box>
       </Paper>

@@ -8,6 +8,7 @@ import jwt
 from datetime import datetime, timedelta
 import traceback
 from django.core.mail import send_mail
+from rest_framework.exceptions import PermissionDenied
 
 # ---------------- School ViewSet ----------------
 class SchoolViewSet(viewsets.ReadOnlyModelViewSet):
@@ -132,6 +133,32 @@ class FacultyViewSet(viewsets.ModelViewSet):
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
+    
+    def perform_update(self, serializer):
+        # Ensure only the creator can update
+        event = self.get_object()
+        request_faculty_id = self.request.user.id  # If using token auth
+        
+        # For non-token auth, you might need to extract from query params or request data
+        faculty_id = self.request.query_params.get('faculty_id')
+        if not faculty_id:
+            faculty_id = self.request.data.get('faculty')
+        
+        if str(event.faculty.id) != str(faculty_id):
+            raise PermissionDenied("You don't have permission to edit this event")
+        
+        serializer.save()
+    
+    def perform_destroy(self, instance):
+        # Ensure only the creator can delete
+        request_faculty_id = self.request.query_params.get('faculty_id')
+        if not request_faculty_id:
+            request_faculty_id = self.request.data.get('faculty')
+            
+        if str(instance.faculty.id) != str(request_faculty_id):
+            raise PermissionDenied("You don't have permission to delete this event")
+        
+        instance.delete()
 
 # ---------------- Class ViewSet ----------------
 class ClassViewSet(viewsets.ModelViewSet):

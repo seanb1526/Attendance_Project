@@ -10,6 +10,11 @@ import {
   useMediaQuery,
   Snackbar,
   Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -27,7 +32,15 @@ const AddEvent = () => {
     date: '',
     time: '',
     location: '',
+    checkin_before_minutes: 15,  // Default: 15 minutes before
+    checkin_after_minutes: 15,   // Default: 15 minutes after
   });
+
+  // Generate 15-minute interval options from 0 to 120 minutes (2 hours)
+  const timeIntervalOptions = [];
+  for (let minutes = 0; minutes <= 120; minutes += 15) {
+    timeIntervalOptions.push(minutes);
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,7 +52,6 @@ const AddEvent = () => {
       const dateTime = new Date(`${eventData.date}T${eventData.time}`).toISOString();
       
       // Get faculty ID from local storage or context
-      // This is just a placeholder - you need to implement your authentication system
       const facultyId = localStorage.getItem('facultyId');
       const schoolId = localStorage.getItem('schoolId');
       
@@ -50,6 +62,8 @@ const AddEvent = () => {
         location: eventData.location,
         faculty: facultyId,
         school: schoolId,
+        checkin_before_minutes: eventData.checkin_before_minutes,
+        checkin_after_minutes: eventData.checkin_after_minutes,
       };
       
       // Make the API request
@@ -106,41 +120,40 @@ const AddEvent = () => {
               placeholder="e.g., Guest Speaker: AI Ethics"
             />
           </Grid>
-
+          
           <Grid item xs={12}>
             <TextField
               fullWidth
               label="Description"
               multiline
               rows={4}
-              required
               value={eventData.description}
               onChange={handleChange('description')}
-              placeholder="Provide details about the event..."
+              placeholder="Provide details about the event"
             />
           </Grid>
-
+          
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
               label="Date"
-              required
               type="date"
+              required
+              InputLabelProps={{ shrink: true }}
               value={eventData.date}
               onChange={handleChange('date')}
-              InputLabelProps={{ shrink: true }}
             />
           </Grid>
-
+          
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
               label="Time"
-              required
               type="time"
+              required
+              InputLabelProps={{ shrink: true }}
               value={eventData.time}
               onChange={handleChange('time')}
-              InputLabelProps={{ shrink: true }}
             />
           </Grid>
 
@@ -153,6 +166,53 @@ const AddEvent = () => {
               onChange={handleChange('location')}
               placeholder="e.g., Lecture Hall A"
             />
+          </Grid>
+          
+          {/* Check-in time window options */}
+          <Grid item xs={12}>
+            <Typography variant="h6" sx={{ mt: 2, mb: 2, fontSize: '1rem' }}>
+              Attendance Check-in Window
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel>Allow Check-in Before</InputLabel>
+              <Select
+                value={eventData.checkin_before_minutes}
+                onChange={handleChange('checkin_before_minutes')}
+                label="Allow Check-in Before"
+              >
+                {timeIntervalOptions.map((minutes) => (
+                  <MenuItem key={`before-${minutes}`} value={minutes}>
+                    {minutes === 0 ? 'Not allowed' : `${minutes} minutes before`}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                How long before the event can students check in?
+              </FormHelperText>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel>Allow Check-in After</InputLabel>
+              <Select
+                value={eventData.checkin_after_minutes}
+                onChange={handleChange('checkin_after_minutes')}
+                label="Allow Check-in After"
+              >
+                {timeIntervalOptions.map((minutes) => (
+                  <MenuItem key={`after-${minutes}`} value={minutes}>
+                    {minutes === 0 ? 'Not allowed' : `${minutes} minutes after`}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                How long after the event starts can students still check in?
+              </FormHelperText>
+            </FormControl>
           </Grid>
 
           <Grid item xs={12}>
