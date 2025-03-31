@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent
-from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer
+from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer, StudentSerializer
 from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
@@ -18,7 +18,7 @@ class SchoolViewSet(viewsets.ReadOnlyModelViewSet):
 # ---------------- Student ViewSet ----------------
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
-    serializer_class = StudentRegistrationSerializer
+    serializer_class = StudentSerializer
 
 # ---------------- Register Student ----------------
 @api_view(['POST'])

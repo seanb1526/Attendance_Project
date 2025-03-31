@@ -26,6 +26,10 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import Avatar from '@mui/material/Avatar';
+import ListItemAvatar from '@mui/material/ListItemAvatar';
 
 const ClassDetails = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -83,13 +87,16 @@ const ClassDetails = () => {
             );
             
             const studentResults = await Promise.all(studentPromises);
-            setStudents(studentResults.map(res => ({
-              id: res.data.id,
-              firstName: res.data.first_name,
-              lastName: res.data.last_name,
-              studentId: res.data.student_id,
-              email: res.data.email
-            })));
+            setStudents(studentResults.map(res => {
+              return {
+                id: res.data.id,
+                firstName: res.data.first_name,
+                lastName: res.data.last_name,
+                studentId: res.data.student_id,
+                email: res.data.email,
+                email_verified: res.data.email_verified
+              };
+            }));
           } 
           // Approach 2: Use class-student relationship API if available
           else {
@@ -102,13 +109,16 @@ const ClassDetails = () => {
                 );
                 
                 const studentResults = await Promise.all(studentPromises);
-                setStudents(studentResults.map(res => ({
-                  id: res.data.id,
-                  firstName: res.data.first_name,
-                  lastName: res.data.last_name,
-                  studentId: res.data.student_id,
-                  email: res.data.email
-                })));
+                setStudents(studentResults.map(res => {
+                  return {
+                    id: res.data.id,
+                    firstName: res.data.first_name,
+                    lastName: res.data.last_name,
+                    studentId: res.data.student_id,
+                    email: res.data.email,
+                    email_verified: res.data.email_verified
+                  };
+                }));
               } else {
                 setStudents([]);
               }
@@ -403,57 +413,90 @@ const ClassDetails = () => {
               )}
             </>
           )}
-          {tabValue === 1 ? (
-            students.length > 0 ? (
-              <Paper sx={{ 
-                bgcolor: '#FFFFFF',
-                boxShadow: 0
-              }}>
-                <List>
-                  {students.map((student, index) => (
-                    <React.Fragment key={student.id}>
-                      <ListItem>
-                        <ListItemText 
-                          primary={`${student.firstName} ${student.lastName}`}
-                          secondary={student.email}
-                        />
-                        <Chip 
-                          label={student.studentId}
-                          size="small"
-                          sx={{ bgcolor: '#f0f0f0' }}
-                        />
-                      </ListItem>
-                      {index < students.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                </List>
-              </Paper>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="body1" color="text.secondary">
-                  No students enrolled in this class yet.
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => navigate(`/faculty/classes/edit/${id}`, { state: { tabIndex: 1 } })}
-                  sx={{
-                    mt: 2,
-                    bgcolor: '#DEA514',
-                    '&:hover': {
-                      bgcolor: '#B88A10',
-                    }
-                  }}
-                >
-                  Add Students
-                </Button>
-              </Box>
-            )
-          ):(
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="body1" color="text.secondary">
-                Events assigned to this class will appear here.
-              </Typography>
-            </Box>
+          {tabValue === 1 && (
+            <>
+              {students.length > 0 ? (
+                <Paper sx={{ 
+                  bgcolor: '#FFFFFF',
+                  boxShadow: 0
+                }}>
+                  <List>
+                    {students.map((student, index) => {
+                      return (
+                        <React.Fragment key={student.id}>
+                          <ListItem
+                            secondaryAction={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Chip 
+                                  label={student.studentId}
+                                  size="small"
+                                  sx={{ bgcolor: '#f0f0f0' }}
+                                />
+                                <Chip 
+                                  label={student.email_verified ? "Registered" : "Not Registered"}
+                                  size="small"
+                                  sx={{ 
+                                    bgcolor: student.email_verified ? 'rgba(46, 125, 50, 0.1)' : 'rgba(211, 47, 47, 0.1)',
+                                    color: student.email_verified ? '#2e7d32' : '#d32f2f',
+                                    fontWeight: 'medium',
+                                    border: `1px solid ${student.email_verified ? 'rgba(46, 125, 50, 0.5)' : 'rgba(211, 47, 47, 0.5)'}`,
+                                  }}
+                                  icon={student.email_verified ? 
+                                    <CheckCircleOutlineIcon fontSize="small" sx={{ color: '#2e7d32' }} /> : 
+                                    <HighlightOffIcon fontSize="small" sx={{ color: '#d32f2f' }} />
+                                  }
+                                />
+                              </Box>
+                            }
+                          >
+                            <ListItemAvatar>
+                              <Avatar sx={{ 
+                                bgcolor: student.email_verified ? '#e8f5e9' : '#ffebee',
+                                color: student.email_verified ? '#2e7d32' : '#d32f2f'
+                              }}>
+                                {student.firstName.charAt(0)}{student.lastName.charAt(0)}
+                              </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText 
+                              primary={
+                                <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                                  {student.firstName} {student.lastName}
+                                </Typography>
+                              }
+                              secondary={
+                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                                  {student.email}
+                                </Typography>
+                              }
+                            />
+                          </ListItem>
+                          {index < students.length - 1 && <Divider />}
+                        </React.Fragment>
+                      );
+                    })}
+                  </List>
+                </Paper>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No students enrolled in this class yet.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate(`/faculty/classes/${id}/edit`)}
+                    sx={{
+                      mt: 2,
+                      bgcolor: '#DEA514',
+                      '&:hover': {
+                        bgcolor: '#B88A10',
+                      }
+                    }}
+                  >
+                    Add Students
+                  </Button>
+                </Box>
+              )}
+            </>
           )}
         </Box>
       </Paper>
