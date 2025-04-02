@@ -96,6 +96,7 @@ def verify_email(request):
 def student_signin(request):
     email = request.data.get('email')
     student_id = request.data.get('student_id')
+    remember_me = request.data.get('remember_me', False)
 
     try:
         student = Student.objects.get(email=email)
@@ -103,9 +104,12 @@ def student_signin(request):
         if student.student_id != student_id:
             return Response({'error': 'Invalid student ID'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
+        token_expiration = timedelta(days=30) if remember_me else timedelta(hours=24)
+
         token = jwt.encode({
             'student_id': str(student.id),
-            'exp': datetime.utcnow() + timedelta(hours=24)
+            'exp': datetime.utcnow() + token_expiration
         }, settings.SECRET_KEY, algorithm='HS256')
 
         verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
@@ -127,7 +131,7 @@ def student_signin(request):
             fail_silently=False,
         )
 
-        return Response({'message': 'Please check your email for the sign in link.'})
+        return Response({'message': 'Please check your email for the sign-in link.'})
 
     except Student.DoesNotExist:
         return Response({'error': 'No account found with this email'}, status=status.HTTP_404_NOT_FOUND)
