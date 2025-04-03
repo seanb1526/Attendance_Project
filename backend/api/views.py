@@ -261,6 +261,7 @@ def register_faculty(request):
 @api_view(['POST'])
 def faculty_signin(request):
     email = request.data.get('email')
+    remember_me = request.data.get('remember_me', False)
     
     try:
         faculty = Faculty.objects.get(email=email)
@@ -270,10 +271,13 @@ def faculty_signin(request):
                 'error': 'Please verify your email address first'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
+        token_expiration = timedelta(days=30) if remember_me else timedelta(days=1)
+
         # Generate authentication token
         token = jwt.encode({
             'faculty_id': str(faculty.id),
-            'exp': datetime.utcnow() + timedelta(days=1)  # Token expires in 24 hours
+            'exp': datetime.utcnow() + token_expiration
         }, settings.SECRET_KEY, algorithm='HS256')
 
         # Send signin link via email

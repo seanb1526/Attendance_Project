@@ -22,6 +22,7 @@ import EventIcon from '@mui/icons-material/Event';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import SchoolIcon from '@mui/icons-material/School';
 import ClassIcon from '@mui/icons-material/Class';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from '../../utils/axios';  // Adjust the path as needed
 
@@ -83,8 +84,15 @@ const FacultyDashboard = () => {
     setProfileModalOpen(false);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('facultyId');
+    localStorage.removeItem('schoolId');
+    
+    navigate('/');
+  };
+
   const drawer = (
-    <Box sx={{ bgcolor: '#FFFFFF', height: '100%' }}>
+    <Box sx={{ bgcolor: '#FFFFFF', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar
         sx={{
           bgcolor: '#FFFFFF',
@@ -110,11 +118,7 @@ const FacultyDashboard = () => {
                 opacity: 0.8
               }
             }}
-            onClick={() => {
-              localStorage.removeItem('authToken');
-              localStorage.removeItem('userType');
-              navigate('/');
-            }}
+            onClick={() => navigate('/')}
           >
             <span style={{ color: '#DEA514' }}>TrueAttend</span>
           </Typography>
@@ -169,6 +173,35 @@ const FacultyDashboard = () => {
           </ListItem>
         ))}
       </List>
+      
+      <Box sx={{ mt: 'auto' }}>
+        <Divider />
+        <List>
+          <ListItem disablePadding>
+            <ListItemButton
+              onClick={() => {
+                handleLogout();
+                if (isMobile) handleDrawerToggle();
+              }}
+              sx={{
+                '&:hover': {
+                  bgcolor: 'rgba(222, 165, 20, 0.04)',
+                },
+              }}
+            >
+              <ListItemIcon sx={{ color: '#f44336' }}>
+                <LogoutIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary="Logout"
+                sx={{
+                  color: '#f44336',
+                }}
+              />
+            </ListItemButton>
+          </ListItem>
+        </List>
+      </Box>
     </Box>
   );
 

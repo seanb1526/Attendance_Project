@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AppBar, 
   Toolbar, 
@@ -14,24 +14,61 @@ import {
   ListItemText
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userType, setUserType] = useState(null);
   
   // Check if we're on the student dashboard
   const isStudentDashboard = location.pathname === '/student/dashboard';
+
+  // Check authentication status on component mount and location change
+  useEffect(() => {
+    const facultyId = localStorage.getItem('facultyId');
+    const studentId = localStorage.getItem('studentId');
+    
+    if (facultyId) {
+      setIsAuthenticated(true);
+      setUserType('faculty');
+    } else if (studentId) {
+      setIsAuthenticated(true);
+      setUserType('student');
+    } else {
+      setIsAuthenticated(false);
+      setUserType(null);
+    }
+  }, [location]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleSignInClick = () => {
+    if (isAuthenticated) {
+      if (userType === 'faculty') {
+        navigate('/faculty/dashboard');
+      } else if (userType === 'student') {
+        navigate('/student/dashboard');
+      }
+    } else {
+      navigate('/auth');
+    }
+  };
+
   const menuItems = [
     { text: 'About', path: '/about' },
-    { text: 'Sign In / Register', path: '/auth' }
+    { 
+      text: isAuthenticated ? 'Go to Dashboard' : 'Sign In / Register', 
+      path: isAuthenticated 
+        ? (userType === 'faculty' ? '/faculty/dashboard' : '/student/dashboard') 
+        : '/auth'
+    }
   ];
 
   const drawer = (
@@ -53,8 +90,10 @@ const Navbar = () => {
             <ListItemText 
               primary={item.text}
               sx={{
-                color: item.text === 'Sign In / Register' ? '#DEA514' : 'inherit',
-                fontWeight: item.text === 'Sign In / Register' ? 'bold' : 'normal',
+                color: item.text === 'Sign In / Register' || item.text === 'Go to Dashboard' 
+                  ? '#DEA514' : 'inherit',
+                fontWeight: item.text === 'Sign In / Register' || item.text === 'Go to Dashboard' 
+                  ? 'bold' : 'normal',
               }}
             />
           </ListItem>
@@ -110,8 +149,7 @@ const Navbar = () => {
             {!isStudentDashboard && (
               <Button 
                 variant="contained"
-                component={RouterLink} 
-                to="/auth"
+                onClick={handleSignInClick}
                 sx={{ 
                   ml: 2,
                   bgcolor: '#DEA514',
@@ -120,7 +158,7 @@ const Navbar = () => {
                   }
                 }}
               >
-                Sign In / Register
+                {isAuthenticated ? 'Go to Dashboard' : 'Sign In / Register'}
               </Button>
             )}
           </Box>
