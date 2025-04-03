@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Box, Typography, Paper, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, Alert, Container, Button, useTheme, useMediaQuery } from '@mui/material';
 import axios from '../../utils/axios';
 
 // Function to decode JWT token
@@ -26,6 +26,13 @@ const EmailVerification = () => {
   const [message, setMessage] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Add these lines for mobile detection
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  // Get userType from localStorage in component
+  const userType = localStorage.getItem('userType') || 'student';
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -69,14 +76,16 @@ const EmailVerification = () => {
         setStatus('success');
         setMessage(response.data.message || 'Email verified successfully!');
         
-        // Redirect based on user type
-        setTimeout(() => {
-          if (userType === 'faculty') {
-            navigate('/faculty/dashboard', { replace: true });
-          } else {
-            navigate('/student/dashboard', { replace: true });
-          }
-        }, 3000);
+        // After successful verification, check for redirect
+        const params = new URLSearchParams(location.search);
+        const redirectUrl = params.get('redirect');
+        
+        // Handle redirect based on user type
+        if (userType === 'student') {
+          navigate(redirectUrl || '/student/dashboard');
+        } else if (userType === 'faculty') {
+          navigate(redirectUrl || '/faculty/dashboard');
+        }
       } catch (error) {
         setStatus('error');
         setMessage(error.response?.data?.error || 'Email verification failed. Please try again.');
@@ -86,30 +95,73 @@ const EmailVerification = () => {
     verifyEmail();
   }, [location, navigate]);
 
+  // For the navigation function:
+  const goToDashboard = () => {
+    const currentUserType = localStorage.getItem('userType') || 'student';
+    navigate(currentUserType === 'faculty' ? '/faculty/dashboard' : '/student/dashboard');
+  };
+
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', p: 3 }}>
-      <Paper sx={{ p: 3, textAlign: 'center' }}>
-        {status === 'verifying' && (
-          <>
-            <CircularProgress sx={{ mb: 2 }} />
-            <Typography>Verifying your email...</Typography>
-          </>
-        )}
-        {status === 'success' && (
-          <Alert severity="success">
-            {message}
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              Redirecting to login page...
-            </Typography>
-          </Alert>
-        )}
-        {status === 'error' && (
-          <Alert severity="error">
-            {message}
-          </Alert>
-        )}
-      </Paper>
-    </Box>
+    <Container maxWidth="sm">
+      <Box 
+        sx={{ 
+          mt: isMobile ? 4 : 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          p: isMobile ? 2 : 4
+        }}
+      >
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: isMobile ? 3 : 4,
+            width: '100%',
+            borderRadius: 2
+          }}
+        >
+          {status === 'verifying' && (
+            <Box sx={{ textAlign: 'center' }}>
+              <CircularProgress size={isMobile ? 40 : 50} />
+              <Typography 
+                variant={isMobile ? "body1" : "h6"} 
+                sx={{ mt: 2 }}
+              >
+                Verifying your email...
+              </Typography>
+            </Box>
+          )}
+          
+          {status === 'success' && (
+            <Alert severity="success">
+              {message}
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Redirecting to login page...
+              </Typography>
+            </Alert>
+          )}
+          {status === 'error' && (
+            <Alert severity="error">
+              {message}
+            </Alert>
+          )}
+          
+          {/* Make buttons full width on mobile */}
+          <Button
+            variant="contained"
+            fullWidth={isMobile}
+            onClick={goToDashboard}
+            sx={{
+              mt: 3,
+              bgcolor: '#DEA514',
+              '&:hover': { bgcolor: '#B88A10' }
+            }}
+          >
+            Go to Dashboard
+          </Button>
+        </Paper>
+      </Box>
+    </Container>
   );
 };
 

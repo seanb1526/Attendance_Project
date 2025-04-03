@@ -21,4 +21,6 @@ urlpatterns = [
     path('class/create/', views.create_class, name='create-class'),
     path('student/lookup/', views.lookup_student, name='lookup-student'),
     path('class/<int:pk>/update/', views.update_class, name='update-class'),
+    path('event/<str:event_id>/qr/', views.generate_event_qr, name='generate-event-qr'),
+    path('faculty/<uuid:pk>/update-profile/', views.update_faculty_profile, name='update-faculty-profile'),
 ]

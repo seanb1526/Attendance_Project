@@ -13,6 +13,9 @@ import EmailVerification from './components/Auth/EmailVerification';
 import StudentSignIn from './components/Auth/StudentSignIn';
 import FacultyRegister from './components/Auth/FacultyRegister';
 import FacultySignIn from './components/Auth/FacultySignIn';
+import QRScanner from './components/Student/QRScanner';
+import AttendEvent from './components/Student/AttendEvent';
+import StudentProtectedRoute from './components/Auth/ProtectedRoute';
 
 // Create a theme instance with our color scheme
 const theme = createTheme({
@@ -78,19 +81,32 @@ const theme = createTheme({
 
 // Protected Route component
 const ProtectedRoute = ({ children, requiredUserType = null }) => {
-  // Check if user is authenticated by looking for a token in localStorage
-  const isAuthenticated = localStorage.getItem('authToken') !== null;
-  const userType = localStorage.getItem('userType');
-  
-  if (!isAuthenticated) {
-    // Redirect to auth page if not authenticated
-    return <Navigate to="/auth" replace />;
-  }
-
-  // If a specific user type is required, check if the user matches
-  if (requiredUserType && userType !== requiredUserType) {
-    // Redirect to home page if user type doesn't match
-    return <Navigate to="/" replace />;
+  if (requiredUserType === "faculty") {
+    // For faculty routes, check if facultyId exists
+    const isFacultyAuthenticated = localStorage.getItem('facultyId') !== null;
+    
+    if (!isFacultyAuthenticated) {
+      // Redirect to faculty sign in
+      return <Navigate to="/auth/faculty/signin" replace />;
+    }
+  } else if (requiredUserType === "student") {
+    // For student routes, check if studentId exists
+    const isStudentAuthenticated = localStorage.getItem('studentId') !== null;
+    
+    if (!isStudentAuthenticated) {
+      // Redirect to student sign in
+      return <Navigate to="/auth/student/signin" replace />;
+    }
+  } else {
+    // For generic routes requiring authentication
+    const isAuthenticated = 
+      localStorage.getItem('facultyId') !== null || 
+      localStorage.getItem('studentId') !== null;
+    
+    if (!isAuthenticated) {
+      // Redirect to auth landing
+      return <Navigate to="/auth" replace />;
+    }
   }
   
   return children;
@@ -140,6 +156,16 @@ function App() {
                         </ProtectedRoute>
                       } 
                     />
+                    <Route path="/scan" element={
+                      <StudentProtectedRoute>
+                        <QRScanner />
+                      </StudentProtectedRoute>
+                    } />
+                    <Route path="/attend/:eventId" element={
+                      <StudentProtectedRoute>
+                        <AttendEvent />
+                      </StudentProtectedRoute>
+                    } />
                   </Routes>
                 </>
               }

@@ -9,6 +9,14 @@ from datetime import datetime, timedelta
 import traceback
 from django.core.mail import send_mail
 from rest_framework.exceptions import PermissionDenied
+import qrcode
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from django.http import HttpResponse
+from uuid import UUID
+from PIL import Image
 
 # ---------------- School ViewSet ----------------
 class SchoolViewSet(viewsets.ReadOnlyModelViewSet):
@@ -70,7 +78,10 @@ def verify_email(request):
             user.email_verified = True
             user.save()
 
-            return Response({'message': 'Email verified successfully'})
+            return Response({
+                'message': 'Email verified successfully',
+                'student_id': str(student_id)
+            })
     except jwt.ExpiredSignatureError:
         return Response({'error': 'Verification link has expired'}, status=status.HTTP_400_BAD_REQUEST)
     except (jwt.DecodeError, jwt.InvalidTokenError):
@@ -85,6 +96,7 @@ def verify_email(request):
 def student_signin(request):
     email = request.data.get('email')
     student_id = request.data.get('student_id')
+    remember_me = request.data.get('remember_me', False)
 
     try:
         student = Student.objects.get(email=email)
@@ -92,9 +104,12 @@ def student_signin(request):
         if student.student_id != student_id:
             return Response({'error': 'Invalid student ID'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
+        token_expiration = timedelta(days=30) if remember_me else timedelta(hours=24)
+
         token = jwt.encode({
             'student_id': str(student.id),
-            'exp': datetime.utcnow() + timedelta(hours=24)
+            'exp': datetime.utcnow() + token_expiration
         }, settings.SECRET_KEY, algorithm='HS256')
 
         verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
@@ -116,7 +131,7 @@ def student_signin(request):
             fail_silently=False,
         )
 
-        return Response({'message': 'Please check your email for the sign in link.'})
+        return Response({'message': 'Please check your email for the sign-in link.'})
 
     except Student.DoesNotExist:
         return Response({'error': 'No account found with this email'}, status=status.HTTP_404_NOT_FOUND)
@@ -128,6 +143,35 @@ def student_signin(request):
 class FacultyViewSet(viewsets.ModelViewSet):
     queryset = Faculty.objects.all()
     serializer_class = FacultySerializer
+    
+    def perform_destroy(self, instance):
+        # When deleting a faculty, we also want to delete all related data
+        # First, get all classes created by this faculty
+        classes = Class.objects.filter(faculty=instance)
+        
+        # Get all events created by this faculty
+        events = Event.objects.filter(faculty=instance)
+        
+        # Delete all class-event associations where the event is from this faculty
+        for event in events:
+            ClassEvent.objects.filter(event=event).delete()
+        
+        # Delete all attendance records for events created by this faculty
+        for event in events:
+            Attendance.objects.filter(event=event).delete()
+        
+        # Delete all student-class associations for classes created by this faculty
+        for class_instance in classes:
+            ClassStudent.objects.filter(class_instance=class_instance).delete()
+        
+        # Delete all classes
+        classes.delete()
+        
+        # Delete all events
+        events.delete()
+        
+        # Finally, delete the faculty account
+        instance.delete()
 
 # ---------------- Event ViewSet ----------------
 class EventViewSet(viewsets.ModelViewSet):
@@ -217,6 +261,7 @@ def register_faculty(request):
 @api_view(['POST'])
 def faculty_signin(request):
     email = request.data.get('email')
+    remember_me = request.data.get('remember_me', False)
     
     try:
         faculty = Faculty.objects.get(email=email)
@@ -226,10 +271,13 @@ def faculty_signin(request):
                 'error': 'Please verify your email address first'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
+        token_expiration = timedelta(days=30) if remember_me else timedelta(days=1)
+
         # Generate authentication token
         token = jwt.encode({
             'faculty_id': str(faculty.id),
-            'exp': datetime.utcnow() + timedelta(days=1)  # Token expires in 24 hours
+            'exp': datetime.utcnow() + token_expiration
         }, settings.SECRET_KEY, algorithm='HS256')
 
         # Send signin link via email
@@ -388,3 +436,111 @@ class ClassEventViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(class_instance=class_instance)
         
         return queryset
+
+@api_view(['GET'])
+def generate_event_qr(request, event_id):
+    """Generate a QR code PDF for an event"""
+    try:
+        # Convert string to UUID if needed
+        event_uuid = UUID(event_id)
+        # Get the event
+        event = Event.objects.get(pk=event_uuid)
+        
+        # Create event attendance URL - this will be the data in the QR code
+        # We'll use a format like: /attend/{event_id}
+        attendance_url = f"{settings.FRONTEND_URL}/attend/{event_id}"
+        
+        # Generate QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(attendance_url)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Create a byte buffer for the image
+        img_buffer = io.BytesIO()
+        img.save(img_buffer)
+        img_buffer.seek(0)
+        
+        # Create a PDF
+        buffer = io.BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=letter)
+        
+        # Add event details to PDF
+        pdf.setFont("Helvetica-Bold", 16)
+        pdf.drawString(1*inch, 10*inch, f"Event: {event.name}")
+        pdf.setFont("Helvetica", 12)
+        
+        # Handle date formatting based on available fields
+        if hasattr(event, 'start_time') and event.start_time:
+            pdf.drawString(1*inch, 9.5*inch, f"Date: {event.start_time.strftime('%B %d, %Y')}")
+            pdf.drawString(1*inch, 9.0*inch, f"Time: {event.start_time.strftime('%I:%M %p')} - {event.end_time.strftime('%I:%M %p')}")
+        elif hasattr(event, 'date') and event.date:
+            # If you're using a 'date' field instead of start_time/end_time
+            pdf.drawString(1*inch, 9.5*inch, f"Date: {event.date.strftime('%B %d, %Y')}")
+        
+        # Add location if available
+        if hasattr(event, 'location') and event.location:
+            pdf.drawString(1*inch, 8.5*inch, f"Location: {event.location}")
+        
+        # Add instructions
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(1*inch, 8.0*inch, "Instructions:")
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(1*inch, 7.5*inch, "1. Print this QR code and display it in class")
+        pdf.drawString(1*inch, 7.0*inch, "2. Have students scan this code with the ClassAttend app")
+        pdf.drawString(1*inch, 6.5*inch, "3. Students must be logged in to record attendance")
+        
+        # Add QR code to PDF - FIX HERE
+        # Convert BytesIO to PIL Image for reportlab
+        img_pil = Image.open(img_buffer)
+        pdf.drawInlineImage(img_pil, 2.5*inch, 2*inch, width=4*inch, height=4*inch)
+        
+        # Save PDF
+        pdf.save()
+        
+        # Get the PDF value from the buffer
+        buffer.seek(0)
+        
+        # Create the HTTP response with PDF content
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="event_{event_id}_qr.pdf"'
+        
+        return response
+        
+    except Event.DoesNotExist:
+        return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Add this to backend/api/views.py
+@api_view(['PUT'])
+def update_faculty_profile(request, pk):
+    """Update just the first and last name of a faculty member"""
+    try:
+        faculty = Faculty.objects.get(pk=pk)
+        
+        # Update only first name and last name
+        if 'first_name' in request.data:
+            faculty.first_name = request.data['first_name']
+        if 'last_name' in request.data:
+            faculty.last_name = request.data['last_name']
+            
+        faculty.save()
+        
+        return Response({
+            'id': str(faculty.id),
+            'first_name': faculty.first_name,
+            'last_name': faculty.last_name,
+            'email': faculty.email
+        })
+    except Faculty.DoesNotExist:
+        return Response({'error': 'Faculty not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

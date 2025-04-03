@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Container, Typography, Box, Button, Paper, Grid, useTheme, useMediaQuery } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import SchoolIcon from '@mui/icons-material/School';
@@ -9,6 +9,38 @@ const AuthLanding = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Check if user is already authenticated and redirect accordingly
+  useEffect(() => {
+    const facultyId = localStorage.getItem('facultyId');
+    const studentId = localStorage.getItem('studentId');
+    
+    if (facultyId) {
+      navigate('/faculty/dashboard');
+    } else if (studentId) {
+      navigate('/student/dashboard');
+    }
+  }, [navigate]);
+
+  // Function to handle faculty sign-in button click
+  const handleFacultySignIn = () => {
+    const facultyId = localStorage.getItem('facultyId');
+    if (facultyId) {
+      navigate('/faculty/dashboard');
+    } else {
+      navigate('/auth/faculty/signin');
+    }
+  };
+
+  // Function to handle student sign-in button click
+  const handleStudentSignIn = () => {
+    const studentId = localStorage.getItem('studentId');
+    if (studentId) {
+      navigate('/student/dashboard');
+    } else {
+      navigate('/auth/student/signin');
+    }
+  };
 
   return (
     <Box sx={{ 
@@ -94,7 +126,7 @@ const AuthLanding = () => {
                   variant="contained" 
                   color="primary" 
                   sx={{ mr: 2 }}
-                  onClick={() => navigate('/auth/faculty/signin')}
+                  onClick={handleFacultySignIn}
                 >
                   Sign In
                 </Button>
@@ -155,7 +187,7 @@ const AuthLanding = () => {
                   variant="contained" 
                   color="primary" 
                   sx={{ mr: 2 }}
-                  onClick={() => navigate('/auth/student/signin')}
+                  onClick={handleStudentSignIn}
                 >
                   Sign In
                 </Button>
