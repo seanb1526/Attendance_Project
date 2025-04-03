@@ -25,7 +25,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditIcon from '@mui/icons-material/Edit';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // Make sure to import axios
+import axios from '../../../utils/axios';
 
 const EventsList = () => {
   const theme = useTheme();

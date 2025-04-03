@@ -86,6 +86,7 @@ const EditEvent = () => {
           location: event.location || '',
           checkin_before_minutes: event.checkin_before_minutes || 15,
           checkin_after_minutes: event.checkin_after_minutes || 15,
+          faculty: localStorage.getItem('facultyId') ,
         });
 
         setLoading(false);
@@ -115,18 +116,24 @@ const EditEvent = () => {
     try {
       // Format the date and time for the API
       const dateTime = new Date(`${eventData.date}T${eventData.time}`).toISOString();
+      
+      // Get faculty ID and school ID from local storage
+      const facultyId = localStorage.getItem('facultyId');
+      const schoolId = localStorage.getItem('schoolId');
 
       const eventPayload = {
         name: eventData.name,
         description: eventData.description,
         date: dateTime,
         location: eventData.location,
+        faculty: facultyId,
+        school: schoolId,
         checkin_before_minutes: eventData.checkin_before_minutes,
         checkin_after_minutes: eventData.checkin_after_minutes,
       };
 
       // Make the API request to update the event
-      await axios.put(`/api/events/${id}/`, eventPayload);
+      await axios.put(`/api/events/${id}/?faculty_id=${facultyId}`, eventPayload);
 
       setSuccess('Event updated successfully');
       // Optionally redirect after success
@@ -147,7 +154,8 @@ const EditEvent = () => {
     
     try {
       // Delete the event
-      await axios.delete(`/api/events/${id}/`);
+      const facultyId = localStorage.getItem('facultyId');
+      await axios.delete(`/api/events/${id}/?faculty_id=${facultyId}`);
       
       setSuccess('Event deleted successfully');
       // Redirect after deletion
