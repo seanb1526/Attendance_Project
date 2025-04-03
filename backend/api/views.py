@@ -143,6 +143,35 @@ def student_signin(request):
 class FacultyViewSet(viewsets.ModelViewSet):
     queryset = Faculty.objects.all()
     serializer_class = FacultySerializer
+    
+    def perform_destroy(self, instance):
+        # When deleting a faculty, we also want to delete all related data
+        # First, get all classes created by this faculty
+        classes = Class.objects.filter(faculty=instance)
+        
+        # Get all events created by this faculty
+        events = Event.objects.filter(faculty=instance)
+        
+        # Delete all class-event associations where the event is from this faculty
+        for event in events:
+            ClassEvent.objects.filter(event=event).delete()
+        
+        # Delete all attendance records for events created by this faculty
+        for event in events:
+            Attendance.objects.filter(event=event).delete()
+        
+        # Delete all student-class associations for classes created by this faculty
+        for class_instance in classes:
+            ClassStudent.objects.filter(class_instance=class_instance).delete()
+        
+        # Delete all classes
+        classes.delete()
+        
+        # Delete all events
+        events.delete()
+        
+        # Finally, delete the faculty account
+        instance.delete()
 
 # ---------------- Event ViewSet ----------------
 class EventViewSet(viewsets.ModelViewSet):
@@ -484,3 +513,30 @@ def generate_event_qr(request, event_id):
         return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Add this to backend/api/views.py
+@api_view(['PUT'])
+def update_faculty_profile(request, pk):
+    """Update just the first and last name of a faculty member"""
+    try:
+        faculty = Faculty.objects.get(pk=pk)
+        
+        # Update only first name and last name
+        if 'first_name' in request.data:
+            faculty.first_name = request.data['first_name']
+        if 'last_name' in request.data:
+            faculty.last_name = request.data['last_name']
+            
+        faculty.save()
+        
+        return Response({
+            'id': str(faculty.id),
+            'first_name': faculty.first_name,
+            'last_name': faculty.last_name,
+            'email': faculty.email
+        })
+    except Faculty.DoesNotExist:
+        return Response({'error': 'Faculty not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

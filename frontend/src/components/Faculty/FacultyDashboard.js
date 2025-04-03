@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { 
-  Box, 
-  Drawer, 
-  AppBar, 
-  Toolbar, 
-  List, 
-  Typography, 
-  Divider, 
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Drawer,
+  AppBar,
+  Toolbar,
+  List,
+  Typography,
+  Divider,
   IconButton,
   ListItem,
   ListItemButton,
@@ -23,6 +23,7 @@ import AddBoxIcon from '@mui/icons-material/AddBox';
 import SchoolIcon from '@mui/icons-material/School';
 import ClassIcon from '@mui/icons-material/Class';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import axios from '../../utils/axios';  // Adjust the path as needed
 
 // Import sub-components (we'll create these next)
 import Dashboard from './Dashboard';
@@ -33,6 +34,7 @@ import AddClass from './Classes/AddClass';
 import ClassDetails from './Classes/ClassDetails';
 import EditClass from './Classes/EditClass';
 import EditEvent from './Events/EditEvent';
+import FacultyProfileModal from './FacultyProfileModal';
 
 const drawerWidth = 240;
 
@@ -48,17 +50,43 @@ const FacultyDashboard = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [facultyName, setFacultyName] = useState('Professor');
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const fetchFacultyData = async () => {
+      try {
+        const facultyId = localStorage.getItem('facultyId');
+        if (facultyId) {
+          const response = await axios.get(`/api/facultys/${facultyId}/`);
+          setFacultyName(response.data.last_name || 'Professor');
+        }
+      } catch (err) {
+        console.error('Error fetching faculty data:', err);
+      }
+    };
+    
+    fetchFacultyData();
+  }, []);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleOpenProfileModal = () => {
+    setProfileModalOpen(true);
+  };
+
+  const handleCloseProfileModal = () => {
+    setProfileModalOpen(false);
+  };
+
   const drawer = (
     <Box sx={{ bgcolor: '#FFFFFF', height: '100%' }}>
-      <Toolbar 
-        sx={{ 
+      <Toolbar
+        sx={{
           bgcolor: '#FFFFFF',
           borderBottom: '1px solid rgba(0,0,0,0.08)',
           display: 'flex',
@@ -68,9 +96,9 @@ const FacultyDashboard = () => {
         }}
       >
         <Box>
-          <Typography 
-            variant="h6" 
-            sx={{ 
+          <Typography
+            variant="h6"
+            sx={{
               color: '#2C2C2C',
               fontWeight: 'bold',
               lineHeight: 1.2,
@@ -83,18 +111,16 @@ const FacultyDashboard = () => {
               }
             }}
             onClick={() => {
-              // Clear authentication data
               localStorage.removeItem('authToken');
               localStorage.removeItem('userType');
-              // Navigate to home page
               navigate('/');
             }}
           >
             <span style={{ color: '#DEA514' }}>TrueAttend</span>
           </Typography>
-          <Typography 
-            variant="caption" 
-            sx={{ 
+          <Typography
+            variant="caption"
+            sx={{
               color: '#666',
               display: 'block',
               mt: 0.5
@@ -128,13 +154,13 @@ const FacultyDashboard = () => {
                 },
               }}
             >
-              <ListItemIcon sx={{ 
+              <ListItemIcon sx={{
                 color: location.pathname === item.path ? '#DEA514' : 'inherit'
               }}>
                 {item.icon}
               </ListItemIcon>
-              <ListItemText 
-                primary={item.text} 
+              <ListItemText
+                primary={item.text}
                 sx={{
                   color: location.pathname === item.path ? '#DEA514' : '#2C2C2C',
                 }}
@@ -188,13 +214,20 @@ const FacultyDashboard = () => {
               Faculty Portal
             </Typography>
           </Box>
+          
           <Box sx={{ 
             display: 'flex', 
             alignItems: 'center',
             gap: 2,
             borderLeft: '1px solid rgba(0,0,0,0.08)',
-            pl: 2
-          }}>
+            pl: 2,
+            cursor: 'pointer',
+            '&:hover': {
+              opacity: 0.8
+            }
+          }}
+          onClick={handleOpenProfileModal}
+          >
             <Typography 
               variant="body1" 
               sx={{ 
@@ -202,7 +235,7 @@ const FacultyDashboard = () => {
                 display: { xs: 'none', sm: 'block' }
               }}
             >
-              Welcome, Professor
+              Welcome, {facultyName}
             </Typography>
             <Box 
               sx={{ 
@@ -217,7 +250,7 @@ const FacultyDashboard = () => {
                 fontWeight: 'bold'
               }}
             >
-              P
+              {facultyName.charAt(0)}
             </Box>
           </Box>
         </Toolbar>
@@ -231,15 +264,10 @@ const FacultyDashboard = () => {
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better mobile performance
-          }}
+          ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
-              width: drawerWidth 
-            },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
           }}
         >
           {drawer}
@@ -248,10 +276,7 @@ const FacultyDashboard = () => {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
-              width: drawerWidth 
-            },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
           }}
           open
         >
@@ -269,7 +294,7 @@ const FacultyDashboard = () => {
           minHeight: '100vh',
         }}
       >
-        <Toolbar /> {/* This creates space for the AppBar */}
+        <Toolbar />
         <Container maxWidth="lg">
           <Routes>
             <Route index element={<Navigate to="/faculty/dashboard" replace />} />
@@ -284,6 +309,8 @@ const FacultyDashboard = () => {
           </Routes>
         </Container>
       </Box>
+
+      <FacultyProfileModal open={profileModalOpen} onClose={handleCloseProfileModal} />
     </Box>
   );
 };
