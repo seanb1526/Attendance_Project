@@ -25,7 +25,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditIcon from '@mui/icons-material/Edit';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // Make sure to import axios
+import axios from '../../../utils/axios';
 
 const EventsList = () => {
   const theme = useTheme();
@@ -106,11 +106,6 @@ const EventsList = () => {
   const canEditEvent = (event) => {
     const facultyId = localStorage.getItem('facultyId');
     return event.faculty === facultyId;
-  };
-
-  const handleDownloadQrCode = (eventId) => {
-    // Use the full backend URL
-    window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
   };
 
   return (
@@ -249,10 +244,9 @@ const EventsList = () => {
                         <Button
                           size="small"
                           startIcon={<QrCode2Icon />}
-                          onClick={() => handleDownloadQrCode(event.id)}
-                          sx={{ color: '#666', mr: 1 }}
+                          sx={{ color: '#666' }}
                         >
-                          Download QR Code
+                          QR Code
                         </Button>
                         
                         <Box>
