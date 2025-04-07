@@ -391,19 +391,6 @@ const EventsList = () => {
                         {event.description || 'No description available'}
                       </Typography>
 
-                      {/* We'll need to implement class assignment logic here */}
-                      {/* This is placeholder for now */}
-                      <Box sx={{ mt: 'auto', pt: 2 }}>
-                        <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                          Assigned Classes:
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {/* Replace with real assigned classes when we have them */}
-                          {/* Add logic to display assigned classes here */}
-                          <Chip label="Not implemented yet" size="small" />
-                        </Box>
-                      </Box>
-
                       <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: '1px solid #eee', justifyContent: 'space-between' }}>
                         <Button
                           size="small"
