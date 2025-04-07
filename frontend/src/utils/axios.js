@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 // Configure axios defaults
-axios.defaults.baseURL = 'http://localhost:8000';
+const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+axios.defaults.baseURL = apiUrl;
 
 export default axios; 
