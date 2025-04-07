@@ -43,6 +43,7 @@ const ClassDetails = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedClasses, setSelectedClasses] = useState([]);
 
   useEffect(() => {
     const fetchClassDetails = async () => {
