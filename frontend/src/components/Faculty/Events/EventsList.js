@@ -23,6 +23,8 @@ import {
   OutlinedInput,
   TextField,
   InputAdornment,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
@@ -30,6 +32,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
+import HistoryIcon from '@mui/icons-material/History';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
 
@@ -48,6 +51,7 @@ const EventsList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showPastEvents, setShowPastEvents] = useState(false);
 
   // Fetch events and classes on component mount
   useEffect(() => {
@@ -63,7 +67,6 @@ const EventsList = () => {
         });
         
         setAllEvents(sortedEvents);
-        setEvents(sortedEvents);
         
         // Fetch classes
         const classesResponse = await axios.get('/api/classes/');
@@ -80,20 +83,40 @@ const EventsList = () => {
     fetchData();
   }, []);
 
-  // Filter events based on search query
+  // Filter events based on search query and whether to show past events
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setEvents(allEvents);
-    } else {
-      const filteredEvents = allEvents.filter(event => 
+    // Apply date filtering
+    const now = new Date();
+    // Set time to beginning of the day to include same-day events
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    let filteredEvents = allEvents;
+    
+    // Filter out past events unless showPastEvents is true
+    if (!showPastEvents) {
+      filteredEvents = allEvents.filter(event => {
+        const eventDate = new Date(event.date);
+        // Keep events from today or future days
+        return eventDate >= today;
+      });
+    }
+    
+    // Apply search filter
+    if (searchQuery.trim() !== '') {
+      filteredEvents = filteredEvents.filter(event => 
         event.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setEvents(filteredEvents);
     }
-  }, [searchQuery, allEvents]);
+    
+    setEvents(filteredEvents);
+  }, [searchQuery, allEvents, showPastEvents]);
 
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
+  };
+
+  const handleTogglePastEvents = () => {
+    setShowPastEvents(!showPastEvents);
   };
 
   const handleAssignEvent = (event) => {
@@ -125,16 +148,6 @@ const EventsList = () => {
       
       setAllEvents(sortedEvents);
       
-      // Apply current search filter
-      if (searchQuery.trim() === '') {
-        setEvents(sortedEvents);
-      } else {
-        const filteredEvents = sortedEvents.filter(event => 
-          event.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-        setEvents(filteredEvents);
-      }
-      
       setAssignDialogOpen(false);
       setSelectedClasses([]);
     } catch (err) {
@@ -164,6 +177,22 @@ const EventsList = () => {
   const canEditEvent = (event) => {
     const facultyId = localStorage.getItem('facultyId');
     return event.faculty === facultyId;
+  };
+
+  // Helper to check if an event is in the past
+  const isEventPast = (eventDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Beginning of today
+    return new Date(eventDate) < today;
+  };
+
+  // Helper to check if an event is today
+  const isEventToday = (eventDate) => {
+    const today = new Date();
+    const eventDay = new Date(eventDate);
+    return today.getDate() === eventDay.getDate() && 
+           today.getMonth() === eventDay.getMonth() && 
+           today.getFullYear() === eventDay.getFullYear();
   };
 
   return (
@@ -202,8 +231,8 @@ const EventsList = () => {
         </Button>
       </Box>
 
-      {/* Search Bar */}
-      <Box sx={{ mb: 3 }}>
+      {/* Search and filter controls */}
+      <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           fullWidth
           placeholder="Search events by name..."
@@ -224,6 +253,31 @@ const EventsList = () => {
             },
           }}
         />
+        
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <FormControlLabel
+            control={
+              <Switch 
+                checked={showPastEvents}
+                onChange={handleTogglePastEvents}
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: '#DEA514',
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: '#DEA514',
+                  },
+                }}
+              />
+            }
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <HistoryIcon sx={{ mr: 0.5, fontSize: 20 }} />
+                <Typography variant="body2">Show Past Events</Typography>
+              </Box>
+            }
+          />
+        </Box>
       </Box>
 
       {/* Display loading indicator */}
@@ -246,7 +300,11 @@ const EventsList = () => {
           {events.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="body1" color="text.secondary">
-                {searchQuery ? 'No events found matching your search.' : 'No events found. Create your first event!'}
+                {searchQuery 
+                  ? 'No events found matching your search.' 
+                  : showPastEvents 
+                    ? 'No events found. Create your first event!' 
+                    : 'No upcoming events found. Create a new event or enable "Show Past Events" to see your history.'}
               </Typography>
               {!searchQuery && (
                 <Button
@@ -270,7 +328,8 @@ const EventsList = () => {
               {events.map((event) => {
                 const { date, time } = formatDateTime(event.date);
                 const eventDate = new Date(event.date);
-                const isUpcoming = eventDate >= new Date();
+                const isPast = isEventPast(event.date);
+                const isToday = isEventToday(event.date);
                 
                 return (
                   <Grid item xs={12} md={6} lg={4} key={event.id}>
@@ -281,9 +340,26 @@ const EventsList = () => {
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
-                        borderLeft: isUpcoming ? '4px solid #DEA514' : '4px solid #999',
+                        borderLeft: isPast 
+                          ? '4px solid #999' 
+                          : isToday 
+                            ? '4px solid #4CAF50' // Green for today's events 
+                            : '4px solid #DEA514', // Gold for future events
                       }}
                     >
+                      {isToday && (
+                        <Chip 
+                          label="Today" 
+                          size="small" 
+                          sx={{ 
+                            alignSelf: 'flex-start', 
+                            mb: 1,
+                            bgcolor: '#4CAF50',
+                            color: 'white',
+                          }} 
+                        />
+                      )}
+                      
                       <Typography variant="h6" sx={{ mb: 2, color: '#2C2C2C' }}>
                         {event.name}
                       </Typography>
