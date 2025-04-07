@@ -153,7 +153,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
-    "https://attendance-su.onrender.com",  # Update with your Render URL
+    "https://trueattend.onrender.com",  # Your Render URL
 ]
 
 CORS_ALLOW_CREDENTIALS = True
