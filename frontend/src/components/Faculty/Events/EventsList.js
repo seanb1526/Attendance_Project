@@ -18,6 +18,9 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
+  Checkbox,
+  ListItemText,
+  OutlinedInput,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
@@ -33,7 +36,7 @@ const EventsList = () => {
   const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedClasses, setSelectedClasses] = useState([]);
   
   // Add new state variables for data fetching
   const [events, setEvents] = useState([]);
@@ -68,27 +71,39 @@ const EventsList = () => {
 
   const handleAssignEvent = (event) => {
     setSelectedEvent(event);
+    setSelectedClasses([]);
     setAssignDialogOpen(true);
   };
 
   const handleAssignSubmit = async () => {
     try {
-      // Make API call to assign the event to the class
-      await axios.post('/api/class-events/', {
-        class_instance: selectedClass,
-        event: selectedEvent.id
-      });
+      // Create an array of promises for each class assignment
+      const assignmentPromises = selectedClasses.map(classId => 
+        axios.post('/api/class-events/', {
+          class_instance: classId,
+          event: selectedEvent.id
+        })
+      );
+      
+      // Wait for all assignments to complete
+      await Promise.all(assignmentPromises);
       
       // Refresh the events list to show updated assignments
       const response = await axios.get('/api/events/');
       setEvents(response.data);
       
       setAssignDialogOpen(false);
-      setSelectedClass('');
+      setSelectedClasses([]);
     } catch (err) {
       console.error('Error assigning event:', err);
       // You could add error handling here
     }
+  };
+
+  // Handle change for multi-select
+  const handleClassSelectionChange = (event) => {
+    const { value } = event.target;
+    setSelectedClasses(value);
   };
 
   // Helper function to format date and time
@@ -229,16 +244,7 @@ const EventsList = () => {
 
                       {/* We'll need to implement class assignment logic here */}
                       {/* This is placeholder for now */}
-                      <Box sx={{ mt: 'auto', pt: 2 }}>
-                        <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                          Assigned Classes:
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {/* Replace with real assigned classes when we have them */}
-                          {/* Add logic to display assigned classes here */}
-                          <Chip label="Not implemented yet" size="small" />
-                        </Box>
-                      </Box>
+
 
                       <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: '1px solid #eee', justifyContent: 'space-between' }}>
                         <Button
@@ -267,7 +273,7 @@ const EventsList = () => {
                             onClick={() => handleAssignEvent(event)}
                             sx={{ color: '#DEA514' }}
                           >
-                            Assign to Class
+                            Assign to Classes
                           </Button>
                         </Box>
                       </Box>
@@ -280,20 +286,39 @@ const EventsList = () => {
         </>
       )}
 
-      {/* Assign to Class Dialog */}
-      <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)}>
-        <DialogTitle>Assign Event to Class</DialogTitle>
+      {/* Assign to Classes Dialog */}
+      <Dialog 
+        open={assignDialogOpen} 
+        onClose={() => setAssignDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Assign Event to Classes</DialogTitle>
         <DialogContent>
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>Select Class</InputLabel>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Select one or more classes to assign this event to:
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel>Select Classes</InputLabel>
             <Select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              label="Select Class"
+              multiple
+              value={selectedClasses}
+              onChange={handleClassSelectionChange}
+              input={<OutlinedInput label="Select Classes" />}
+              renderValue={(selected) => {
+                if (selected.length === 0) {
+                  return <em>Select classes</em>;
+                }
+                return selected.map(id => {
+                  const classItem = classes.find(c => c.id === id);
+                  return classItem ? classItem.name : '';
+                }).join(', ');
+              }}
             >
               {classes.map((classItem) => (
                 <MenuItem key={classItem.id} value={classItem.id}>
-                  {classItem.name}
+                  <Checkbox checked={selectedClasses.indexOf(classItem.id) > -1} />
+                  <ListItemText primary={classItem.name} />
                 </MenuItem>
               ))}
             </Select>
@@ -303,7 +328,7 @@ const EventsList = () => {
           <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
           <Button 
             onClick={handleAssignSubmit} 
-            disabled={!selectedClass}
+            disabled={selectedClasses.length === 0}
             sx={{ color: '#DEA514' }}
           >
             Assign
