@@ -21,12 +21,15 @@ import {
   Checkbox,
   ListItemText,
   OutlinedInput,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
 
@@ -40,9 +43,11 @@ const EventsList = () => {
   
   // Add new state variables for data fetching
   const [events, setEvents] = useState([]);
+  const [allEvents, setAllEvents] = useState([]); // Store all events for filtering
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch events and classes on component mount
   useEffect(() => {
@@ -52,10 +57,16 @@ const EventsList = () => {
         // Fetch events
         const eventsResponse = await axios.get('/api/events/');
         
+        // Sort events by date (nearest first)
+        const sortedEvents = [...eventsResponse.data].sort((a, b) => {
+          return new Date(a.date) - new Date(b.date);
+        });
+        
+        setAllEvents(sortedEvents);
+        setEvents(sortedEvents);
+        
         // Fetch classes
         const classesResponse = await axios.get('/api/classes/');
-        
-        setEvents(eventsResponse.data);
         setClasses(classesResponse.data);
         setError(null);
       } catch (err) {
@@ -68,6 +79,22 @@ const EventsList = () => {
     
     fetchData();
   }, []);
+
+  // Filter events based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setEvents(allEvents);
+    } else {
+      const filteredEvents = allEvents.filter(event => 
+        event.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setEvents(filteredEvents);
+    }
+  }, [searchQuery, allEvents]);
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
 
   const handleAssignEvent = (event) => {
     setSelectedEvent(event);
@@ -90,7 +117,23 @@ const EventsList = () => {
       
       // Refresh the events list to show updated assignments
       const response = await axios.get('/api/events/');
-      setEvents(response.data);
+      
+      // Sort events by date (nearest first)
+      const sortedEvents = [...response.data].sort((a, b) => {
+        return new Date(a.date) - new Date(b.date);
+      });
+      
+      setAllEvents(sortedEvents);
+      
+      // Apply current search filter
+      if (searchQuery.trim() === '') {
+        setEvents(sortedEvents);
+      } else {
+        const filteredEvents = sortedEvents.filter(event => 
+          event.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setEvents(filteredEvents);
+      }
       
       setAssignDialogOpen(false);
       setSelectedClasses([]);
@@ -159,6 +202,30 @@ const EventsList = () => {
         </Button>
       </Box>
 
+      {/* Search Bar */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          placeholder="Search events by name..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: 'text.secondary' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              '&.Mui-focused fieldset': {
+                borderColor: '#DEA514',
+              },
+            },
+          }}
+        />
+      </Box>
+
       {/* Display loading indicator */}
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -179,27 +246,32 @@ const EventsList = () => {
           {events.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="body1" color="text.secondary">
-                No events found. Create your first event!
+                {searchQuery ? 'No events found matching your search.' : 'No events found. Create your first event!'}
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => navigate('/faculty/events/add')}
-                sx={{
-                  mt: 2,
-                  bgcolor: '#DEA514',
-                  '&:hover': {
-                    bgcolor: '#B88A10',
-                  }
-                }}
-              >
-                Create New Event
-              </Button>
+              {!searchQuery && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate('/faculty/events/add')}
+                  sx={{
+                    mt: 2,
+                    bgcolor: '#DEA514',
+                    '&:hover': {
+                      bgcolor: '#B88A10',
+                    }
+                  }}
+                >
+                  Create New Event
+                </Button>
+              )}
             </Paper>
           ) : (
             <Grid container spacing={3}>
               {events.map((event) => {
                 const { date, time } = formatDateTime(event.date);
+                const eventDate = new Date(event.date);
+                const isUpcoming = eventDate >= new Date();
+                
                 return (
                   <Grid item xs={12} md={6} lg={4} key={event.id}>
                     <Paper
@@ -209,6 +281,7 @@ const EventsList = () => {
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
+                        borderLeft: isUpcoming ? '4px solid #DEA514' : '4px solid #999',
                       }}
                     >
                       <Typography variant="h6" sx={{ mb: 2, color: '#2C2C2C' }}>
@@ -244,7 +317,16 @@ const EventsList = () => {
 
                       {/* We'll need to implement class assignment logic here */}
                       {/* This is placeholder for now */}
-
+                      <Box sx={{ mt: 'auto', pt: 2 }}>
+                        <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                          Assigned Classes:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {/* Replace with real assigned classes when we have them */}
+                          {/* Add logic to display assigned classes here */}
+                          <Chip label="Not implemented yet" size="small" />
+                        </Box>
+                      </Box>
 
                       <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: '1px solid #eee', justifyContent: 'space-between' }}>
                         <Button
