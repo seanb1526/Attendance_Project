@@ -285,9 +285,39 @@ const QRScanner = () => {
         throw new Error("You must be logged in to record attendance");
       }
       
+      // Try to get location data
+      let locationData = null;
+      
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0
+            });
+          });
+          
+          // Format location data for storage
+          locationData = JSON.stringify({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString()
+          });
+          
+          console.log("Location captured:", locationData);
+        } catch (geoError) {
+          console.log("Geolocation error or permission denied:", geoError.message);
+          // Continue without location data
+        }
+      }
+      
+      // Include location data in the attendance record
       await axios.post('/api/attendance/', {
         student: studentId,
-        event: eventId
+        event: eventId,
+        location: locationData // This will be null if geolocation failed or was denied
       });
       
       setSuccess("Attendance recorded successfully!");
