@@ -30,6 +30,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import Avatar from '@mui/material/Avatar';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
+import DownloadIcon from '@mui/icons-material/Download';
 
 const ClassDetails = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -44,6 +45,7 @@ const ClassDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedClasses, setSelectedClasses] = useState([]);
+  const [attendanceLoading, setAttendanceLoading] = useState({});
 
   useEffect(() => {
     const fetchClassDetails = async () => {
@@ -203,6 +205,48 @@ const ClassDetails = () => {
     window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
   };
 
+  const handleDownloadAttendanceReport = async (eventId, eventName, e) => {
+    e.stopPropagation();
+    try {
+      setAttendanceLoading(prev => ({ ...prev, [eventId]: true }));
+      
+      const facultyId = localStorage.getItem('facultyId');
+      const attendanceResponse = await axios.get(
+        `/api/attendance/event/${eventId}/class/${id}/?faculty_id=${facultyId}`
+      );
+      
+      if (!attendanceResponse.data || !Array.isArray(attendanceResponse.data)) {
+        throw new Error('Invalid attendance data received');
+      }
+      
+      const attendanceMap = {};
+      attendanceResponse.data.forEach(record => {
+        attendanceMap[record.student_id] = true;
+      });
+      
+      let csvContent = "First Name,Last Name,Student ID,Email,Attended\n";
+      
+      students.forEach(student => {
+        const attended = attendanceMap[student.id] ? "Yes" : "No";
+        csvContent += `${student.firstName},${student.lastName},${student.studentId},${student.email},${attended}\n`;
+      });
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${classData.name}_${eventName}_attendance.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error downloading attendance report:', err);
+    } finally {
+      setAttendanceLoading(prev => ({ ...prev, [eventId]: false }));
+    }
+  };
+
   return (
     <Box>
       <Paper sx={{ 
@@ -283,6 +327,25 @@ const ClassDetails = () => {
         <Box sx={{ p: 2 }}>
           {tabValue === 0 && (
             <>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                mb: 2 
+              }}>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate('/faculty/events/', { state: { classId: id } })}
+                  sx={{
+                    bgcolor: '#DEA514',
+                    '&:hover': {
+                      bgcolor: '#B88A10',
+                    }
+                  }}
+                  startIcon={<EventIcon />}
+                >
+                  Assign Events
+                </Button>
+              </Box>
               {events.length > 0 ? (
                 <Grid container spacing={3} sx={{ mt: 1 }}>
                   {events.map((event) => {
@@ -365,33 +428,71 @@ const ClassDetails = () => {
                             mt: 'auto', 
                             pt: 2, 
                             display: 'flex',
-                            justifyContent: 'space-between',
+                            flexDirection: 'column',
+                            gap: 1,
                             borderTop: '1px solid #eee',
                           }}>
-                            <Chip 
-                              size="small" 
-                              label={
-                                event.checkin_before_minutes > 0 
-                                  ? `Check-in: ${event.checkin_before_minutes} min before` 
-                                  : "No early check-in"
-                              }
-                              sx={{ 
-                                bgcolor: '#f0f0f0',
-                                fontSize: '0.7rem',
-                              }} 
-                            />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Chip 
+                                size="small" 
+                                label={
+                                  event.checkin_before_minutes > 0 
+                                    ? `Check-in: ${event.checkin_before_minutes} min before` 
+                                    : "No early check-in"
+                                }
+                                sx={{ 
+                                  bgcolor: '#f0f0f0',
+                                  fontSize: '0.7rem',
+                                }} 
+                              />
+                            </Box>
                             
-                            <Button
-                              size="small"
-                              startIcon={<QrCode2Icon />}
-                              sx={{
-                                color: '#DEA514',
-                                fontSize: '0.75rem',
-                              }}
-                              onClick={() => handleDownloadQrCode(event.id)}
-                            >
-                              QR Code
-                            </Button>
+                            <Box sx={{ 
+                              display: 'flex', 
+                              justifyContent: 'flex-end', 
+                              gap: 1,
+                              mt: 1 
+                            }}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<DownloadIcon />}
+                                sx={{
+                                  color: '#4CAF50',
+                                  borderColor: '#4CAF50',
+                                  fontSize: '0.75rem',
+                                  '&:hover': {
+                                    borderColor: '#388E3C',
+                                    backgroundColor: 'rgba(76, 175, 80, 0.04)',
+                                  }
+                                }}
+                                onClick={(e) => handleDownloadAttendanceReport(event.id, event.name, e)}
+                                disabled={attendanceLoading[event.id]}
+                              >
+                                {attendanceLoading[event.id] ? 'Downloading...' : 'Attendance Report'}
+                              </Button>
+                              
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<QrCode2Icon />}
+                                sx={{
+                                  color: '#DEA514',
+                                  borderColor: '#DEA514',
+                                  fontSize: '0.75rem',
+                                  '&:hover': {
+                                    borderColor: '#B88A10',
+                                    backgroundColor: 'rgba(222, 165, 20, 0.04)',
+                                  }
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadQrCode(event.id);
+                                }}
+                              >
+                                QR Code
+                              </Button>
+                            </Box>
                           </Box>
                         </Paper>
                       </Grid>
@@ -414,7 +515,7 @@ const ClassDetails = () => {
                       }
                     }}
                   >
-                    View Events
+                    Assign Events
                   </Button>
                 </Box>
               )}

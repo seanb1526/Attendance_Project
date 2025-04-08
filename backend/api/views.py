@@ -544,3 +544,63 @@ def update_faculty_profile(request, pk):
         return Response({'error': 'Faculty not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_class_event_attendance(request, event_id, class_id):
+    """
+    Get attendance data for a specific event and class
+    """
+    try:
+        # Check if the class exists
+        class_instance = Class.objects.get(pk=class_id)
+        
+        # Check if the event exists
+        event = Event.objects.get(pk=event_id)
+        
+        # Check if the faculty requesting is the owner of the class
+        if request.user.is_authenticated and hasattr(request.user, 'faculty'):
+            faculty = request.user.faculty
+        else:
+            # For development/testing, get faculty from query param
+            faculty_id = request.query_params.get('faculty_id')
+            if faculty_id:
+                faculty = Faculty.objects.get(pk=faculty_id)
+            else:
+                return Response({"error": "Faculty authentication required"}, status=401)
+        
+        if class_instance.faculty.id != faculty.id:
+            return Response({"error": "You do not have permission to access this data"}, status=403)
+        
+        # Get all students in the class
+        class_students = ClassStudent.objects.filter(class_instance=class_instance)
+        student_ids = [cs.student.id for cs in class_students]
+        
+        # Get attendance records for the event and these students
+        attendance_records = Attendance.objects.filter(
+            event=event,
+            student__id__in=student_ids
+        ).select_related('student')
+        
+        # Format the attendance data
+        attendance_data = []
+        for record in attendance_records:
+            attendance_data.append({
+                'student_id': record.student.id,
+                'first_name': record.student.first_name,
+                'last_name': record.student.last_name,
+                'email': record.student.email,
+                'student_id_number': record.student.student_id,
+                'attended': True,
+                'scanned_at': record.scanned_at
+            })
+        
+        return Response(attendance_data)
+        
+    except Class.DoesNotExist:
+        return Response({"error": "Class not found"}, status=404)
+    except Event.DoesNotExist:
+        return Response({"error": "Event not found"}, status=404)
+    except Faculty.DoesNotExist:
+        return Response({"error": "Faculty not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
