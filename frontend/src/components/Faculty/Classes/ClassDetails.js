@@ -198,6 +198,11 @@ const ClassDetails = () => {
     );
   }
 
+  const handleDownloadQrCode = (eventId) => {
+    // Use the full backend URL
+    window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
+  };
+
   return (
     <Box>
       <Paper sx={{ 
@@ -383,6 +388,7 @@ const ClassDetails = () => {
                                 color: '#DEA514',
                                 fontSize: '0.75rem',
                               }}
+                              onClick={() => handleDownloadQrCode(event.id)}
                             >
                               QR Code
                             </Button>

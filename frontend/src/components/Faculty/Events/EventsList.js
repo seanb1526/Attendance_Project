@@ -195,6 +195,11 @@ const EventsList = () => {
            today.getFullYear() === eventDay.getFullYear();
   };
 
+  const handleDownloadQrCode = (eventId) => {
+    // Use the full backend URL
+    window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
+  };
+
   return (
     <Box>
       <Box 
@@ -396,6 +401,7 @@ const EventsList = () => {
                           size="small"
                           startIcon={<QrCode2Icon />}
                           sx={{ color: '#666' }}
+                          onClick={() => handleDownloadQrCode(event.id)}
                         >
                           QR Code
                         </Button>
