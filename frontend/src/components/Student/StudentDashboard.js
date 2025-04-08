@@ -165,26 +165,38 @@ const StudentDashboard = () => {
         }
       }
       
-      // Get device identifier
-      const deviceId = getDeviceId();
+      // Get device identifier - with explicit stringification
+      let deviceId = null;
+      try {
+        deviceId = getDeviceId();
+        if (deviceId && deviceId.length > 200) {
+          deviceId = deviceId.substring(0, 200); // Truncate if too long
+        }
+        console.log("Device ID generated:", deviceId);
+      } catch (e) {
+        console.error("Error generating device ID:", e);
+        // Continue without device ID
+      }
       
-      // Create the payload
+      // Build the payload
       const payload = { 
         student: studentId, 
-        event: eventId,
-        location: locationData
+        event: eventId
       };
       
-      // Only add device_id if it's not null or undefined
+      // Only add these if they exist
+      if (locationData) {
+        payload.location = locationData;
+      }
+      
       if (deviceId) {
         payload.device_id = deviceId;
       }
       
-      console.log("Sending attendance payload:", payload);
+      console.log("Full attendance payload:", JSON.stringify(payload));
       
-      // Include location data and device ID in the attendance record
+      // Send the request
       const response = await axios.post('/api/attendance/', payload);
-      console.log("Attendance response:", response.data);
       
       setSuccess('Attendance recorded successfully!');
       setTimeout(() => {
@@ -193,12 +205,24 @@ const StudentDashboard = () => {
       }, 3000);
     } catch (error) {
       console.error("Attendance error:", error);
-      // Add more detailed error logging
+      
+      // Detailed error logging
       if (error.response) {
-        console.error("Error response data:", error.response.data);
-        console.error("Error response status:", error.response.status);
+        console.error("Response status:", error.response.status);
+        console.error("Response headers:", error.response.headers);
+        console.error("Response data:", error.response.data);
+        
+        // Display specific error messages
+        if (error.response.data.device_id) {
+          setError(`Device ID error: ${error.response.data.device_id.join(', ')}`);
+        } else if (error.response.data.non_field_errors) {
+          setError(`Error: ${error.response.data.non_field_errors.join(', ')}`);
+        } else {
+          setError(`Server error: ${error.response.status}`);
+        }
+      } else {
+        setError('Failed to record attendance: ' + (error.message || 'Unknown error'));
       }
-      setError('Failed to record attendance: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -216,7 +240,7 @@ const StudentDashboard = () => {
           navigator.language,
           window.screen.colorDepth,
           (window.screen.width + 'x' + window.screen.height)
-        ].join('|');
+        ].filter(Boolean).join('|');
         
         // Simple hash function
         let hash = 0;
@@ -232,7 +256,7 @@ const StudentDashboard = () => {
       return deviceId;
     } catch (error) {
       console.error("Error generating device ID:", error);
-      return null; // Return null if there's an error, to avoid breaking attendance submission
+      return "unknown_device"; // Provide a fallback value
     }
   };
 
