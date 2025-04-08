@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 // Configure axios defaults
-axios.defaults.baseURL = 'http://localhost:8000';
+// Use relative URLs to make it work regardless of deployment
+axios.defaults.baseURL = '/';
 
 export default axios; 
