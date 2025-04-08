@@ -313,12 +313,26 @@ const QRScanner = () => {
         }
       }
       
-      // Include location data in the attendance record
-      await axios.post('/api/attendance/', {
+      // Get device identifier
+      const deviceId = getDeviceId();
+      
+      // Create the payload
+      const payload = {
         student: studentId,
         event: eventId,
-        location: locationData // This will be null if geolocation failed or was denied
-      });
+        location: locationData
+      };
+      
+      // Only add device_id if it's not null or undefined
+      if (deviceId) {
+        payload.device_id = deviceId;
+      }
+      
+      console.log("Sending attendance payload:", payload);
+      
+      // Include location data and device ID in the attendance record
+      const response = await axios.post('/api/attendance/', payload);
+      console.log("Attendance response:", response.data);
       
       setSuccess("Attendance recorded successfully!");
       
@@ -328,16 +342,59 @@ const QRScanner = () => {
         setEventDetails(null);
       }, 3000);
     } catch (error) {
+      console.error("Attendance error:", error);
+      // Add more detailed error logging
+      if (error.response) {
+        console.error("Error response data:", error.response.data);
+        console.error("Error response status:", error.response.status);
+      }
+      
       if (error.response && error.response.status === 400 && 
           error.response.data.non_field_errors && 
           error.response.data.non_field_errors.includes('The fields student, event must make a unique set.')) {
         setSuccess('You have already recorded attendance for this event.');
       } else {
-        console.error("Attendance error:", error);
         setError('Failed to record attendance: ' + (error.message || 'Unknown error'));
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Helper function to get a consistent device ID
+  const getDeviceId = () => {
+    try {
+      let deviceId = localStorage.getItem('deviceId');
+      
+      if (!deviceId) {
+        // Create a fingerprint from available browser data
+        const fingerprint = [
+          navigator.userAgent,
+          navigator.language,
+          window.screen.colorDepth,
+          (window.screen.width + 'x' + window.screen.height)
+        ].join('|');
+        
+        // Simple hash function
+        let hash = 0;
+        for (let i = 0; i < fingerprint.length; i++) {
+          hash = ((hash << 5) - hash) + fingerprint.charCodeAt(i);
+          hash |= 0; // Convert to 32bit integer
+        }
+        
+        deviceId = 'dev_' + Math.abs(hash).toString(16);
+        localStorage.setItem('deviceId', deviceId);
+      }
+      
+      // Make sure the device ID doesn't exceed the max length in the database
+      if (deviceId && deviceId.length > 200) {
+        deviceId = deviceId.substring(0, 200);
+      }
+      
+      return deviceId;
+    } catch (error) {
+      console.error("Error generating device ID:", error);
+      return null; // Return null if there's an error, to avoid breaking attendance submission
     }
   };
 
