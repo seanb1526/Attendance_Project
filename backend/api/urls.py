@@ -48,4 +48,6 @@ urlpatterns = [
     path('faculty/<uuid:pk>/update-profile/', views.update_faculty_profile, name='update-faculty-profile'),
     path('db-test/', db_connection_test, name='db-test'),
     path('attendance/event/<uuid:event_id>/class/<int:class_id>/', views.get_class_event_attendance, name='class-event-attendance'),
+    path('students/<uuid:pk>/update/', views.update_student_profile, name='update-student-profile'),
+    path('students/<uuid:pk>/delete/', views.delete_student_account, name='delete-student-account'),
 ]

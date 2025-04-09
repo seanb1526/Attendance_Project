@@ -586,6 +586,38 @@ def update_faculty_profile(request, pk):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['PUT'])
+def update_student_profile(request, pk):
+    """Update student profile information"""
+    try:
+        student = Student.objects.get(pk=pk)
+        
+        # Update only allowed fields: first_name, last_name
+        if 'first_name' in request.data:
+            student.first_name = request.data['first_name']
+        if 'last_name' in request.data:
+            student.last_name = request.data['last_name']
+        # Update student_id only if provided and not already taken
+        if 'student_id' in request.data and request.data['student_id'] != student.student_id:
+            # Check if the student ID is already taken
+            if Student.objects.filter(student_id=request.data['student_id']).exclude(pk=pk).exists():
+                return Response({'error': 'This student ID is already in use'}, status=status.HTTP_400_BAD_REQUEST)
+            student.student_id = request.data['student_id']
+            
+        student.save()
+        
+        return Response({
+            'id': str(student.id),
+            'first_name': student.first_name,
+            'last_name': student.last_name,
+            'email': student.email,
+            'student_id': student.student_id
+        })
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view(['GET'])
 def get_class_event_attendance(request, event_id, class_id):
     """
@@ -645,3 +677,24 @@ def get_class_event_attendance(request, event_id, class_id):
         return Response({"error": "Faculty not found"}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+@api_view(['DELETE'])
+def delete_student_account(request, pk):
+    """Delete a student account and all associated data"""
+    try:
+        student = Student.objects.get(pk=pk)
+        
+        # First delete all attendance records
+        Attendance.objects.filter(student=student).delete()
+        
+        # Delete all class-student associations
+        ClassStudent.objects.filter(student=student).delete()
+        
+        # Finally delete the student account
+        student.delete()
+        
+        return Response({'message': 'Account successfully deleted'}, status=status.HTTP_200_OK)
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

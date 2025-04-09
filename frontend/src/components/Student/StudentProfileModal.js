@@ -13,6 +13,7 @@ import {
   Divider
 } from '@mui/material';
 import axios from '../../utils/axios';
+import { useNavigate } from 'react-router-dom';
 
 const StudentProfileModal = ({ open, onClose, studentDetails, setStudentDetails }) => {
   const [formData, setFormData] = useState({
@@ -24,6 +25,9 @@ const StudentProfileModal = ({ open, onClose, studentDetails, setStudentDetails 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletionLoading, setDeletionLoading] = useState(false);
 
   useEffect(() => {
     if (studentDetails) {
@@ -58,7 +62,6 @@ const StudentProfileModal = ({ open, onClose, studentDetails, setStudentDetails 
         first_name: formData.first_name,
         last_name: formData.last_name,
         student_id: formData.student_id,
-        // Email is usually not updated directly for security reasons
       });
 
       setStudentDetails({
@@ -72,99 +75,186 @@ const StudentProfileModal = ({ open, onClose, studentDetails, setStudentDetails 
       }, 3000);
     } catch (err) {
       console.error("Error updating profile:", err);
-      setError(err.response?.data?.message || 'Failed to update profile. Please try again.');
+      if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Failed to update profile. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setDeletionLoading(true);
+    try {
+      const studentId = localStorage.getItem('studentId');
+      if (!studentId) {
+        throw new Error('Authentication error. Please sign in again.');
+      }
+
+      await axios.delete(`/api/students/${studentId}/delete/`);
+      
+      // Clear local storage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('studentId');
+      localStorage.removeItem('userType');
+      
+      // Close modal and navigate to home/login page
+      onClose();
+      navigate('/auth');
+    } catch (err) {
+      console.error("Error deleting account:", err);
+      setError('Failed to delete your account. Please try again.');
+      setConfirmDelete(false);
+    } finally {
+      setDeletionLoading(false);
+    }
+  };
+
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-    >
-      <DialogTitle>
-        <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
-          Your Profile
-        </Typography>
-      </DialogTitle>
-      <DialogContent>
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-            <CircularProgress sx={{ color: '#DEA514' }} />
+    <>
+      <Dialog 
+        open={open} 
+        onClose={onClose}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
+            Your Profile
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          {loading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress sx={{ color: '#DEA514' }} />
+            </Box>
+          )}
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+
+          {success && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              {success}
+            </Alert>
+          )}
+
+          {!loading && (
+            <Box component="form" sx={{ mt: 1 }}>
+              <TextField
+                margin="normal"
+                fullWidth
+                label="First Name"
+                value={formData.first_name}
+                onChange={handleChange('first_name')}
+                disabled={loading}
+              />
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Last Name"
+                value={formData.last_name}
+                onChange={handleChange('last_name')}
+                disabled={loading}
+              />
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Student ID"
+                value={formData.student_id}
+                onChange={handleChange('student_id')}
+                disabled={loading}
+              />
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Email"
+                value={formData.email}
+                disabled={true} // Email is read-only
+                helperText="Email cannot be changed. Contact support if needed."
+              />
+            </Box>
+          )}
+
+          <Divider sx={{ mt: 4, mb: 2 }} />
+          
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" sx={{ color: 'error.main', mb: 2 }}>
+              Danger Zone
+            </Typography>
+            <Button 
+              variant="outlined" 
+              color="error" 
+              onClick={() => setConfirmDelete(true)}
+              disabled={loading}
+              fullWidth
+            >
+              Delete Account
+            </Button>
+            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
+              This will permanently delete your account and all your attendance records.
+            </Typography>
           </Box>
-        )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={loading}
+            sx={{
+              bgcolor: '#DEA514',
+              '&:hover': {
+                bgcolor: '#B88A10',
+              }
+            }}
+          >
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-
-        {success && (
-          <Alert severity="success" sx={{ mb: 3 }}>
-            {success}
-          </Alert>
-        )}
-
-        {!loading && (
-          <Box component="form" sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              fullWidth
-              label="First Name"
-              value={formData.first_name}
-              onChange={handleChange('first_name')}
-              disabled={loading}
-            />
-            <TextField
-              margin="normal"
-              fullWidth
-              label="Last Name"
-              value={formData.last_name}
-              onChange={handleChange('last_name')}
-              disabled={loading}
-            />
-            <TextField
-              margin="normal"
-              fullWidth
-              label="Student ID"
-              value={formData.student_id}
-              onChange={handleChange('student_id')}
-              disabled={loading}
-            />
-            <TextField
-              margin="normal"
-              fullWidth
-              label="Email"
-              value={formData.email}
-              disabled={true} // Email is read-only
-              helperText="Email cannot be changed. Contact support if needed."
-            />
+      {/* Confirmation Dialog for Delete */}
+      <Dialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+      >
+        <DialogTitle>Delete Your Account?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete your account? This will permanently remove:
+          </Typography>
+          <Box component="ul" sx={{ mt: 2, pl: 2 }}>
+            <li>Your student profile</li>
+            <li>All your attendance records</li>
+            <li>All your class enrollments</li>
           </Box>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={loading}
-          sx={{
-            bgcolor: '#DEA514',
-            '&:hover': {
-              bgcolor: '#B88A10',
-            }
-          }}
-        >
-          Save Changes
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <Typography sx={{ mt: 2, fontWeight: 'bold', color: 'error.main' }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDelete(false)}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteAccount} 
+            color="error" 
+            variant="contained"
+            disabled={deletionLoading}
+          >
+            {deletionLoading ? 'Deleting...' : 'Delete My Account'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 
