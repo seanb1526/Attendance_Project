@@ -72,7 +72,8 @@ class Attendance(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     scanned_at = models.DateTimeField(auto_now_add=True)
-    location = models.CharField(max_length=100, null=True, blank=True)
+    location = models.CharField(max_length=500, null=True, blank=True)
+    device_id = models.CharField(max_length=255, null=True, blank=True)  # New field for device identification
 
     class Meta:
         unique_together = ('student', 'event')

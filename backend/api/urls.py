@@ -39,6 +39,7 @@ urlpatterns = [
     path('faculty/register/', views.register_faculty, name='faculty-register'),
     path('verify-email/', views.verify_email, name='verify-email'),
     path('student/signin/', views.student_signin, name='student-signin'),
+    path('student/direct-signin/', views.student_direct_signin, name='student-direct-signin'),
     path('faculty/signin/', views.faculty_signin, name='faculty-signin'),
     path('class/create/', views.create_class, name='create-class'),
     path('student/lookup/', views.lookup_student, name='lookup-student'),
@@ -46,4 +47,8 @@ urlpatterns = [
     path('event/<str:event_id>/qr/', views.generate_event_qr, name='generate-event-qr'),
     path('faculty/<uuid:pk>/update-profile/', views.update_faculty_profile, name='update-faculty-profile'),
     path('db-test/', db_connection_test, name='db-test'),
+    path('attendance/event/<uuid:event_id>/class/<int:class_id>/', views.get_class_event_attendance, name='class-event-attendance'),
+    path('students/<uuid:pk>/update/', views.update_student_profile, name='update-student-profile'),
+    path('students/<uuid:pk>/delete/', views.delete_student_account, name='delete-student-account'),
+    path('students/<uuid:student_id>/attendance/', views.get_student_attendance, name='student-attendance'),
 ]

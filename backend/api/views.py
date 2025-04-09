@@ -139,6 +139,47 @@ def student_signin(request):
         traceback.print_exc()
         return Response({'error': 'An error occurred during sign in'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# ---------------- Student Direct Sign In ----------------
+@api_view(['POST'])
+def student_direct_signin(request):
+    email = request.data.get('email')
+    student_id = request.data.get('student_id')
+    remember_me = request.data.get('remember_me', False)
+
+    if not email or not student_id:
+        return Response({'error': 'Email and Student ID are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        student = Student.objects.get(email=email)
+        
+        # Verify the student ID matches
+        if student.student_id != student_id:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
+        token_expiration = timedelta(days=30) if remember_me else timedelta(hours=24)
+
+        # Generate token
+        token = jwt.encode({
+            'student_id': str(student.id),
+            'exp': datetime.utcnow() + token_expiration
+        }, settings.SECRET_KEY, algorithm='HS256')
+
+        # Return token and student info directly
+        return Response({
+            'message': 'Sign-in successful',
+            'token': token,
+            'student_id': str(student.id),
+            'first_name': student.first_name,
+            'last_name': student.last_name
+        })
+
+    except Student.DoesNotExist:
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+    except Exception as e:
+        traceback.print_exc()
+        return Response({'error': 'An error occurred during sign in'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # ---------------- Faculty ViewSet ----------------
 class FacultyViewSet(viewsets.ModelViewSet):
     queryset = Faculty.objects.all()
@@ -544,3 +585,146 @@ def update_faculty_profile(request, pk):
         return Response({'error': 'Faculty not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+def update_student_profile(request, pk):
+    """Update student profile information"""
+    try:
+        student = Student.objects.get(pk=pk)
+        
+        # Update only allowed fields: first_name, last_name
+        if 'first_name' in request.data:
+            student.first_name = request.data['first_name']
+        if 'last_name' in request.data:
+            student.last_name = request.data['last_name']
+        # Update student_id only if provided and not already taken
+        if 'student_id' in request.data and request.data['student_id'] != student.student_id:
+            # Check if the student ID is already taken
+            if Student.objects.filter(student_id=request.data['student_id']).exclude(pk=pk).exists():
+                return Response({'error': 'This student ID is already in use'}, status=status.HTTP_400_BAD_REQUEST)
+            student.student_id = request.data['student_id']
+            
+        student.save()
+        
+        return Response({
+            'id': str(student.id),
+            'first_name': student.first_name,
+            'last_name': student.last_name,
+            'email': student.email,
+            'student_id': student.student_id
+        })
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_class_event_attendance(request, event_id, class_id):
+    """
+    Get attendance data for a specific event and class
+    """
+    try:
+        # Check if the class exists
+        class_instance = Class.objects.get(pk=class_id)
+        
+        # Check if the event exists
+        event = Event.objects.get(pk=event_id)
+        
+        # Check if the faculty requesting is the owner of the class
+        if request.user.is_authenticated and hasattr(request.user, 'faculty'):
+            faculty = request.user.faculty
+        else:
+            # For development/testing, get faculty from query param
+            faculty_id = request.query_params.get('faculty_id')
+            if faculty_id:
+                faculty = Faculty.objects.get(pk=faculty_id)
+            else:
+                return Response({"error": "Faculty authentication required"}, status=401)
+        
+        if class_instance.faculty.id != faculty.id:
+            return Response({"error": "You do not have permission to access this data"}, status=403)
+        
+        # Get all students in the class
+        class_students = ClassStudent.objects.filter(class_instance=class_instance)
+        student_ids = [cs.student.id for cs in class_students]
+        
+        # Get attendance records for the event and these students
+        attendance_records = Attendance.objects.filter(
+            event=event,
+            student__id__in=student_ids
+        ).select_related('student')
+        
+        # Format the attendance data
+        attendance_data = []
+        for record in attendance_records:
+            attendance_data.append({
+                'student_id': record.student.id,
+                'first_name': record.student.first_name,
+                'last_name': record.student.last_name,
+                'email': record.student.email,
+                'student_id_number': record.student.student_id,
+                'attended': True,
+                'scanned_at': record.scanned_at
+            })
+        
+        return Response(attendance_data)
+        
+    except Class.DoesNotExist:
+        return Response({"error": "Class not found"}, status=404)
+    except Event.DoesNotExist:
+        return Response({"error": "Event not found"}, status=404)
+    except Faculty.DoesNotExist:
+        return Response({"error": "Faculty not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+@api_view(['DELETE'])
+def delete_student_account(request, pk):
+    """Delete a student account and all associated data"""
+    try:
+        student = Student.objects.get(pk=pk)
+        
+        # First delete all attendance records
+        Attendance.objects.filter(student=student).delete()
+        
+        # Delete all class-student associations
+        ClassStudent.objects.filter(student=student).delete()
+        
+        # Finally delete the student account
+        student.delete()
+        
+        return Response({'message': 'Account successfully deleted'}, status=status.HTTP_200_OK)
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def get_student_attendance(request, student_id):
+    """Get attendance history for a specific student"""
+    try:
+        # Verify the student exists
+        student = Student.objects.get(pk=student_id)
+        
+        # Get all attendance records for this student
+        attendance_records = Attendance.objects.filter(student=student).order_by('-scanned_at')
+        
+        # Get event details for each attendance record
+        attendance_data = []
+        for record in attendance_records:
+            event = record.event
+            attendance_data.append({
+                'id': str(record.id),
+                'event_id': str(event.id),
+                'event_name': event.name,
+                'event_date': event.date,
+                'event_location': event.location or 'No location specified',
+                'scanned_at': record.scanned_at,
+            })
+        
+        return Response(attendance_data)
+        
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -52,7 +52,7 @@ const AuthLanding = () => {
       px: isMobile ? 2 : 0,
       py: 6
     }}>
-      <Container maxWidth="lg">
+      <Container maxWidth="lg" sx={{ width: '100%' }}>
         <Typography
           variant="h2"
           align="center"
@@ -78,130 +78,137 @@ const AuthLanding = () => {
           Choose your role to continue
         </Typography>
         
-        <Grid container spacing={4} sx={{ maxWidth: '1100px', mx: 'auto' }}>
-          <Grid item xs={12} md={6}>
-            <Paper
-              sx={{
-                p: 4,
-                textAlign: 'center',
-                height: '100%',
-                cursor: 'pointer',
-                bgcolor: '#FFFFFF',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: isMobile ? 'none' : 'translateY(-4px)',
-                  boxShadow: 3,
-                },
-              }}
-            >
-              <PersonIcon sx={{ 
-                fontSize: 56, 
-                color: '#DEA514' 
-              }} />
-              <Typography 
-                variant="h5" 
-                component="h2" 
-                sx={{ 
-                  mt: 3, 
-                  mb: 2, 
-                  color: '#2C2C2C',
-                  fontSize: '1.5rem'
+        <Box sx={{ maxWidth: '1100px', mx: 'auto' }}>
+          <Grid 
+            container 
+            spacing={4} 
+            justifyContent="center"
+            alignItems="stretch"
+          >
+            <Grid item xs={12} sm={10} md={6}>
+              <Paper
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  height: '100%',
+                  cursor: 'pointer',
+                  bgcolor: '#FFFFFF',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    transform: isMobile ? 'none' : 'translateY(-4px)',
+                    boxShadow: 3,
+                  },
                 }}
               >
-                Faculty
-              </Typography>
-              <Typography 
-                color="text.secondary" 
-                sx={{ 
-                  mb: 4,
-                  fontSize: '1rem',
-                  maxWidth: '320px',
-                  mx: 'auto'
-                }}
-              >
-                Access your dashboard to manage events and track attendance.
-              </Typography>
-              <Box sx={{ mt: 2 }}>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  sx={{ mr: 2 }}
-                  onClick={handleFacultySignIn}
+                <PersonIcon sx={{ 
+                  fontSize: 56, 
+                  color: '#DEA514' 
+                }} />
+                <Typography 
+                  variant="h5" 
+                  component="h2" 
+                  sx={{ 
+                    mt: 3, 
+                    mb: 2, 
+                    color: '#2C2C2C',
+                    fontSize: '1.5rem'
+                  }}
                 >
-                  Sign In
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="primary"
-                  onClick={() => navigate('/auth/faculty/register')}
+                  Faculty
+                </Typography>
+                <Typography 
+                  color="text.secondary" 
+                  sx={{ 
+                    mb: 4,
+                    fontSize: '1rem',
+                    maxWidth: '320px',
+                    mx: 'auto'
+                  }}
                 >
-                  Register
-                </Button>
-              </Box>
-            </Paper>
-          </Grid>
+                  Access your dashboard to manage events and track attendance.
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    sx={{ mr: 2 }}
+                    onClick={handleFacultySignIn}
+                  >
+                    Sign In
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    color="primary"
+                    onClick={() => navigate('/auth/faculty/register')}
+                  >
+                    Register
+                  </Button>
+                </Box>
+              </Paper>
+            </Grid>
 
-          <Grid item xs={12} md={6}>
-            <Paper
-              sx={{
-                p: 4,
-                textAlign: 'center',
-                height: '100%',
-                bgcolor: '#FFFFFF',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: isMobile ? 'none' : 'translateY(-4px)',
-                  boxShadow: 3,
-                },
-              }}
-            >
-              <SchoolIcon sx={{ 
-                fontSize: 56,
-                color: '#DEA514' 
-              }} />
-              <Typography 
-                variant="h5" 
-                component="h2" 
-                sx={{ 
-                  mt: 3, 
-                  mb: 2, 
-                  color: '#2C2C2C',
-                  fontSize: '1.5rem'
+            <Grid item xs={12} sm={10} md={6}>
+              <Paper
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  height: '100%',
+                  bgcolor: '#FFFFFF',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    transform: isMobile ? 'none' : 'translateY(-4px)',
+                    boxShadow: 3,
+                  },
                 }}
               >
-                Student
-              </Typography>
-              <Typography 
-                color="text.secondary" 
-                sx={{ 
-                  mb: 4,
-                  fontSize: '1rem',
-                  maxWidth: '320px',
-                  mx: 'auto'
-                }}
-              >
-                Sign in to view events and manage your attendance records.
-              </Typography>
-              <Box sx={{ mt: 2 }}>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  sx={{ mr: 2 }}
-                  onClick={handleStudentSignIn}
+                <SchoolIcon sx={{ 
+                  fontSize: 56,
+                  color: '#DEA514' 
+                }} />
+                <Typography 
+                  variant="h5" 
+                  component="h2" 
+                  sx={{ 
+                    mt: 3, 
+                    mb: 2, 
+                    color: '#2C2C2C',
+                    fontSize: '1.5rem'
+                  }}
                 >
-                  Sign In
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="primary"
-                  onClick={() => navigate('/auth/student/register')}
+                  Student
+                </Typography>
+                <Typography 
+                  color="text.secondary" 
+                  sx={{ 
+                    mb: 4,
+                    fontSize: '1rem',
+                    maxWidth: '320px',
+                    mx: 'auto'
+                  }}
                 >
-                  Register
-                </Button>
-              </Box>
-            </Paper>
+                  Sign in to view events and manage your attendance records.
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    sx={{ mr: 2 }}
+                    onClick={handleStudentSignIn}
+                  >
+                    Sign In
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    color="primary"
+                    onClick={() => navigate('/auth/student/register')}
+                  >
+                    Register
+                  </Button>
+                </Box>
+              </Paper>
+            </Grid>
           </Grid>
-        </Grid>
+        </Box>
       </Container>
     </Box>
   );
