@@ -139,6 +139,47 @@ def student_signin(request):
         traceback.print_exc()
         return Response({'error': 'An error occurred during sign in'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# ---------------- Student Direct Sign In ----------------
+@api_view(['POST'])
+def student_direct_signin(request):
+    email = request.data.get('email')
+    student_id = request.data.get('student_id')
+    remember_me = request.data.get('remember_me', False)
+
+    if not email or not student_id:
+        return Response({'error': 'Email and Student ID are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        student = Student.objects.get(email=email)
+        
+        # Verify the student ID matches
+        if student.student_id != student_id:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
+        token_expiration = timedelta(days=30) if remember_me else timedelta(hours=24)
+
+        # Generate token
+        token = jwt.encode({
+            'student_id': str(student.id),
+            'exp': datetime.utcnow() + token_expiration
+        }, settings.SECRET_KEY, algorithm='HS256')
+
+        # Return token and student info directly
+        return Response({
+            'message': 'Sign-in successful',
+            'token': token,
+            'student_id': str(student.id),
+            'first_name': student.first_name,
+            'last_name': student.last_name
+        })
+
+    except Student.DoesNotExist:
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+    except Exception as e:
+        traceback.print_exc()
+        return Response({'error': 'An error occurred during sign in'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # ---------------- Faculty ViewSet ----------------
 class FacultyViewSet(viewsets.ModelViewSet):
     queryset = Faculty.objects.all()

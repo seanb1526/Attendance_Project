@@ -39,6 +39,7 @@ urlpatterns = [
     path('faculty/register/', views.register_faculty, name='faculty-register'),
     path('verify-email/', views.verify_email, name='verify-email'),
     path('student/signin/', views.student_signin, name='student-signin'),
+    path('student/direct-signin/', views.student_direct_signin, name='student-direct-signin'),
     path('faculty/signin/', views.faculty_signin, name='faculty-signin'),
     path('class/create/', views.create_class, name='create-class'),
     path('student/lookup/', views.lookup_student, name='lookup-student'),

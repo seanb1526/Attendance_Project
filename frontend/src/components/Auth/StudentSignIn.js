@@ -11,7 +11,14 @@ import {
   useTheme,
   useMediaQuery,
   CircularProgress,
+  Tabs,
+  Tab,
+  Divider,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
+import EmailIcon from '@mui/icons-material/Email';
+import PersonIcon from '@mui/icons-material/Person';
 import axios from '../../utils/axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -35,6 +42,8 @@ const StudentSignIn = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [signInMethod, setSignInMethod] = useState(0); // 0 for email (now first), 1 for direct
 
   // Update the useEffect to check for auth status
   useEffect(() => {
@@ -45,6 +54,13 @@ const StudentSignIn = () => {
     }
   }, [navigate, redirectUrl]);
 
+  const handleTabChange = (event, newValue) => {
+    setSignInMethod(newValue);
+    setError('');
+    setSuccess('');
+    setEmailSent(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -53,15 +69,36 @@ const StudentSignIn = () => {
     setEmailSent(false);
     
     try {
-      const response = await axios.post('/api/student/signin/', {
-        email: formData.email,
-        student_id: formData.studentId,
-      });
-      
-      setSuccess('Please check your email for the verification link.');
-      setEmailSent(true);
-      // Don't clear the form if there's an error, so users can try again
-      // setFormData({ email: '', studentId: '' });
+      if (signInMethod === 1) {
+        // Direct sign-in method
+        const response = await axios.post('/api/student/direct-signin/', {
+          email: formData.email,
+          student_id: formData.studentId,
+          remember_me: rememberMe
+        });
+        
+        // Store authentication data
+        localStorage.setItem('authToken', response.data.token);
+        localStorage.setItem('studentId', response.data.student_id);
+        localStorage.setItem('userType', 'student');
+        
+        setSuccess('Sign in successful! Redirecting...');
+        
+        // Redirect after a short delay
+        setTimeout(() => {
+          navigate(redirectUrl);
+        }, 1000);
+      } else {
+        // Email link method
+        const response = await axios.post('/api/student/signin/', {
+          email: formData.email,
+          student_id: formData.studentId,
+          remember_me: rememberMe
+        });
+        
+        setSuccess('Please check your email for the verification link.');
+        setEmailSent(true);
+      }
     } catch (error) {
       setError(error.response?.data?.error || 'Sign in failed. Please try again.');
       setEmailSent(false);
@@ -95,15 +132,22 @@ const StudentSignIn = () => {
             Student Sign In
           </Typography>
           
-          <Typography 
-            variant="body2" 
-            color="text.secondary" 
-            align="center" 
-            paragraph
-            sx={{ mb: 3 }}
-          >
-            Enter your email and student ID to sign in
-          </Typography>
+          <Box sx={{ width: '100%', mb: 3 }}>
+            <Tabs
+              value={signInMethod}
+              onChange={handleTabChange}
+              variant="fullWidth"
+              aria-label="Sign in method tabs"
+              sx={{
+                '& .MuiTab-root': { py: 1.5 },
+                '& .Mui-selected': { color: '#DEA514' },
+                '& .MuiTabs-indicator': { backgroundColor: '#DEA514' }
+              }}
+            >
+              <Tab icon={<EmailIcon />} label="Email Link" />
+              <Tab icon={<PersonIcon />} label="Direct Sign In" />
+            </Tabs>
+          </Box>
           
           {error && <Alert severity="error" sx={{ width: '100%', mb: 2 }}>{error}</Alert>}
           {success && <Alert severity="success" sx={{ width: '100%', mb: 2 }}>{success}</Alert>}
@@ -133,29 +177,52 @@ const StudentSignIn = () => {
                 />
               </Grid>
               <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Remember Me"
+                  sx={{ mb: 1 }}
+                />
+              </Grid>
+              <Grid item xs={12}>
                 <Button
                   type="submit"
                   fullWidth
                   variant="contained"
-                  disabled={loading || emailSent}
+                  disabled={loading || (signInMethod === 0 && emailSent)}
                   sx={{
-                    mt: 3,
+                    mt: 1,
                     mb: 2,
-                    bgcolor: emailSent ? '#4caf50' : '#DEA514',
-                    '&:hover': { bgcolor: emailSent ? '#388e3c' : '#B88A10' },
+                    bgcolor: (signInMethod === 0 && emailSent) ? '#4caf50' : '#DEA514',
+                    '&:hover': { bgcolor: (signInMethod === 0 && emailSent) ? '#388e3c' : '#B88A10' },
                     height: '48px' // Fixed height to prevent jumping
                   }}
                 >
                   {loading ? (
                     <CircularProgress size={24} color="inherit" />
-                  ) : emailSent ? (
+                  ) : (signInMethod === 0 && emailSent) ? (
                     'Email Sent'
-                  ) : (
+                  ) : signInMethod === 1 ? (
                     'Sign In'
+                  ) : (
+                    'Send Sign-In Link'
                   )}
                 </Button>
               </Grid>
             </Grid>
+          </Box>
+          
+          <Box sx={{ mt: 2, width: '100%', textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              {signInMethod === 1 
+                ? "Sign in directly with your student credentials" 
+                : "Receive a sign-in link via email"}
+            </Typography>
           </Box>
         </Paper>
       </Box>
