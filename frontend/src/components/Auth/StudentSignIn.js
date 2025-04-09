@@ -10,6 +10,7 @@ import {
   Container,
   useTheme,
   useMediaQuery,
+  CircularProgress,
 } from '@mui/material';
 import axios from '../../utils/axios';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -32,6 +33,8 @@ const StudentSignIn = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   // Update the useEffect to check for auth status
   useEffect(() => {
@@ -46,6 +49,8 @@ const StudentSignIn = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
+    setEmailSent(false);
     
     try {
       const response = await axios.post('/api/student/signin/', {
@@ -54,9 +59,14 @@ const StudentSignIn = () => {
       });
       
       setSuccess('Please check your email for the verification link.');
-      setFormData({ email: '', studentId: '' });
+      setEmailSent(true);
+      // Don't clear the form if there's an error, so users can try again
+      // setFormData({ email: '', studentId: '' });
     } catch (error) {
       setError(error.response?.data?.error || 'Sign in failed. Please try again.');
+      setEmailSent(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -95,6 +105,9 @@ const StudentSignIn = () => {
             Enter your email and student ID to sign in
           </Typography>
           
+          {error && <Alert severity="error" sx={{ width: '100%', mb: 2 }}>{error}</Alert>}
+          {success && <Alert severity="success" sx={{ width: '100%', mb: 2 }}>{success}</Alert>}
+          
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <Grid container spacing={2}>
               <Grid item xs={12}>
@@ -106,6 +119,7 @@ const StudentSignIn = () => {
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   required
                   helperText="Enter your school email address"
+                  disabled={loading}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -115,6 +129,7 @@ const StudentSignIn = () => {
                   value={formData.studentId}
                   onChange={(e) => setFormData({...formData, studentId: e.target.value})}
                   required
+                  disabled={loading}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -122,14 +137,22 @@ const StudentSignIn = () => {
                   type="submit"
                   fullWidth
                   variant="contained"
+                  disabled={loading || emailSent}
                   sx={{
                     mt: 3,
                     mb: 2,
-                    bgcolor: '#DEA514',
-                    '&:hover': { bgcolor: '#B88A10' }
+                    bgcolor: emailSent ? '#4caf50' : '#DEA514',
+                    '&:hover': { bgcolor: emailSent ? '#388e3c' : '#B88A10' },
+                    height: '48px' // Fixed height to prevent jumping
                   }}
                 >
-                  Sign In
+                  {loading ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : emailSent ? (
+                    'Email Sent'
+                  ) : (
+                    'Sign In'
+                  )}
                 </Button>
               </Grid>
             </Grid>
@@ -140,4 +163,4 @@ const StudentSignIn = () => {
   );
 };
 
-export default StudentSignIn; 
+export default StudentSignIn;
