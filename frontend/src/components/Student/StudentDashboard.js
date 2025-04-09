@@ -11,15 +11,19 @@ import {
   DialogTitle, 
   DialogContent, 
   DialogContentText, 
-  DialogActions 
+  DialogActions,
+  Tabs,
+  Tab
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
+import HistoryIcon from '@mui/icons-material/History';
 import { useNavigate } from 'react-router-dom';
 import jsQR from 'jsqr';
 import axios from '../../utils/axios';
 import StudentProfileModal from './StudentProfileModal';
+import AttendanceHistory from './AttendanceHistory';
 
 const StudentDashboard = () => {
   const [scanning, setScanning] = useState(false);
@@ -31,6 +35,7 @@ const StudentDashboard = () => {
   const [eventDetails, setEventDetails] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [studentDetails, setStudentDetails] = useState(null);
+  const [currentTab, setCurrentTab] = useState(0);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -287,6 +292,10 @@ const StudentDashboard = () => {
     setProfileModalOpen(false);
   };
 
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue);
+  };
+
   return (
     <Box sx={{ pt: 12, pb: 4, minHeight: '100vh', bgcolor: '#F5F5DC' }}>
       <Container maxWidth="sm">
@@ -314,67 +323,90 @@ const StudentDashboard = () => {
           </Box>
         </Box>
 
-        <Paper elevation={2} sx={{ p: { xs: 2, sm: 4 }, bgcolor: '#FFFFFF', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: { xs: 2, sm: 3 }, width: '100%', maxWidth: '500px', mx: 'auto' }}>
-          {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-          {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
-
-          {!eventId ? (
-            <>
-              <Typography variant="h6" align="center" color="text.secondary">
-                Scan QR Code for Event Attendance
-              </Typography>
-              <Box sx={{ width: '100%', maxWidth: '400px', height: '300px', mx: 'auto', mb: 3, border: scanning ? '2px solid #4caf50' : '1px solid #ccc', position: 'relative', overflow: 'hidden', borderRadius: 1, bgcolor: '#000' }}>
-                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: scanning ? 'block' : 'none' }} />
-                {!scanning && (
-                  <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.7)', color: 'white' }}>
-                    <Typography>Camera inactive</Typography>
-                  </Box>
-                )}
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
-              </Box>
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-                {!scanning ? (
-                  <Button variant="contained" onClick={startCamera} color="primary" sx={{ minWidth: '150px' }}>
-                    Start Scanning
-                  </Button>
-                ) : (
-                  <Button variant="outlined" onClick={stopCamera} color="error" sx={{ minWidth: '150px' }}>
-                    Stop Scanning
-                  </Button>
-                )}
-              </Box>
-            </>
-          ) : (
-            <>
-              <Typography variant="h6" gutterBottom>
-                Event Details
-              </Typography>
-              {loading ? (
-                <CircularProgress sx={{ my: 3 }} />
-              ) : eventDetails ? (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="h6" color="primary">{eventDetails.name}</Typography>
-                  <Typography variant="body1" sx={{ mt: 1 }}>{eventDetails.location || 'No location specified'}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    {new Date(eventDetails.date).toLocaleString()}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 2, mt: 3, flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}>
-                    <Button variant="contained" onClick={() => setConfirmOpen(true)} disabled={loading} fullWidth color="primary">
-                      Confirm Attendance
-                    </Button>
-                    <Button variant="outlined" onClick={() => { setEventId(null); setEventDetails(null); }} fullWidth>
-                      Cancel
-                    </Button>
-                  </Box>
-                </Box>
-              ) : (
-                <Typography color="error" sx={{ my: 3 }}>
-                  Failed to load event details. Please try again.
-                </Typography>
-              )}
-            </>
-          )}
+        <Paper sx={{ mb: 3, bgcolor: '#FFFFFF' }}>
+          <Tabs 
+            value={currentTab} 
+            onChange={handleTabChange}
+            variant="fullWidth"
+            sx={{
+              '& .MuiTab-root.Mui-selected': {
+                color: '#DEA514',
+              },
+              '& .MuiTabs-indicator': {
+                backgroundColor: '#DEA514',
+              },
+            }}
+          >
+            <Tab icon={<QrCodeScannerIcon />} label="Scan QR" />
+            <Tab icon={<HistoryIcon />} label="Attendance History" />
+          </Tabs>
         </Paper>
+
+        {currentTab === 0 ? (
+          <Paper elevation={2} sx={{ p: { xs: 2, sm: 4 }, bgcolor: '#FFFFFF', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: { xs: 2, sm: 3 }, width: '100%', maxWidth: '500px', mx: 'auto' }}>
+            {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+
+            {!eventId ? (
+              <>
+                <Typography variant="h6" align="center" color="text.secondary">
+                  Scan QR Code for Event Attendance
+                </Typography>
+                <Box sx={{ width: '100%', maxWidth: '400px', height: '300px', mx: 'auto', mb: 3, border: scanning ? '2px solid #4caf50' : '1px solid #ccc', position: 'relative', overflow: 'hidden', borderRadius: 1, bgcolor: '#000' }}>
+                  <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: scanning ? 'block' : 'none' }} />
+                  {!scanning && (
+                    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.7)', color: 'white' }}>
+                      <Typography>Camera inactive</Typography>
+                    </Box>
+                  )}
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {!scanning ? (
+                    <Button variant="contained" onClick={startCamera} color="primary" sx={{ minWidth: '150px' }}>
+                      Start Scanning
+                    </Button>
+                  ) : (
+                    <Button variant="outlined" onClick={stopCamera} color="error" sx={{ minWidth: '150px' }}>
+                      Stop Scanning
+                    </Button>
+                  )}
+                </Box>
+              </>
+            ) : (
+              <>
+                <Typography variant="h6" gutterBottom>
+                  Event Details
+                </Typography>
+                {loading ? (
+                  <CircularProgress sx={{ my: 3 }} />
+                ) : eventDetails ? (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="h6" color="primary">{eventDetails.name}</Typography>
+                    <Typography variant="body1" sx={{ mt: 1 }}>{eventDetails.location || 'No location specified'}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      {new Date(eventDetails.date).toLocaleString()}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, mt: 3, flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}>
+                      <Button variant="contained" onClick={() => setConfirmOpen(true)} disabled={loading} fullWidth color="primary">
+                        Confirm Attendance
+                      </Button>
+                      <Button variant="outlined" onClick={() => { setEventId(null); setEventDetails(null); }} fullWidth>
+                        Cancel
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Typography color="error" sx={{ my: 3 }}>
+                    Failed to load event details. Please try again.
+                  </Typography>
+                )}
+              </>
+            )}
+          </Paper>
+        ) : (
+          <AttendanceHistory />
+        )}
       </Container>
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>

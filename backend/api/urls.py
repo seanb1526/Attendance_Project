@@ -50,4 +50,5 @@ urlpatterns = [
     path('attendance/event/<uuid:event_id>/class/<int:class_id>/', views.get_class_event_attendance, name='class-event-attendance'),
     path('students/<uuid:pk>/update/', views.update_student_profile, name='update-student-profile'),
     path('students/<uuid:pk>/delete/', views.delete_student_account, name='delete-student-account'),
+    path('students/<uuid:student_id>/attendance/', views.get_student_attendance, name='student-attendance'),
 ]

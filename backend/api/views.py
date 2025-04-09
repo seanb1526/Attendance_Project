@@ -698,3 +698,33 @@ def delete_student_account(request, pk):
         return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def get_student_attendance(request, student_id):
+    """Get attendance history for a specific student"""
+    try:
+        # Verify the student exists
+        student = Student.objects.get(pk=student_id)
+        
+        # Get all attendance records for this student
+        attendance_records = Attendance.objects.filter(student=student).order_by('-scanned_at')
+        
+        # Get event details for each attendance record
+        attendance_data = []
+        for record in attendance_records:
+            event = record.event
+            attendance_data.append({
+                'id': str(record.id),
+                'event_id': str(event.id),
+                'event_name': event.name,
+                'event_date': event.date,
+                'event_location': event.location or 'No location specified',
+                'scanned_at': record.scanned_at,
+            })
+        
+        return Response(attendance_data)
+        
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
