@@ -15,9 +15,11 @@ import {
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import LogoutIcon from '@mui/icons-material/Logout';
+import PersonIcon from '@mui/icons-material/Person';
 import { useNavigate } from 'react-router-dom';
 import jsQR from 'jsqr';
 import axios from '../../utils/axios';
+import StudentProfileModal from './StudentProfileModal';
 
 const StudentDashboard = () => {
   const [scanning, setScanning] = useState(false);
@@ -27,6 +29,8 @@ const StudentDashboard = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [eventId, setEventId] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [studentDetails, setStudentDetails] = useState(null);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -37,6 +41,21 @@ const StudentDashboard = () => {
   const isAuthenticated = localStorage.getItem('studentId') !== null;
 
   useEffect(() => {
+    // Fetch student details when dashboard loads
+    const fetchStudentDetails = async () => {
+      try {
+        const studentId = localStorage.getItem('studentId');
+        if (studentId) {
+          const response = await axios.get(`/api/students/${studentId}/`);
+          setStudentDetails(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching student details:", error);
+      }
+    };
+    
+    fetchStudentDetails();
+    
     return () => {
       stopCamera();
     };
@@ -260,6 +279,14 @@ const StudentDashboard = () => {
     }
   };
 
+  const handleOpenProfileModal = () => {
+    setProfileModalOpen(true);
+  };
+
+  const handleCloseProfileModal = () => {
+    setProfileModalOpen(false);
+  };
+
   return (
     <Box sx={{ pt: 12, pb: 4, minHeight: '100vh', bgcolor: '#F5F5DC' }}>
       <Container maxWidth="sm">
@@ -267,14 +294,24 @@ const StudentDashboard = () => {
           <Typography variant="h4" component="h1" sx={{ color: '#2C2C2C', fontWeight: 'bold' }}>
             Student Dashboard
           </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<LogoutIcon />}
-            onClick={handleLogout}
-            sx={{ borderColor: '#DEA514', color: '#DEA514', '&:hover': { borderColor: '#B88A10', color: '#B88A10' } }}
-          >
-            Logout
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<PersonIcon />}
+              onClick={handleOpenProfileModal}
+              sx={{ borderColor: '#DEA514', color: '#DEA514', '&:hover': { borderColor: '#B88A10', color: '#B88A10' } }}
+            >
+              Profile
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<LogoutIcon />}
+              onClick={handleLogout}
+              sx={{ borderColor: '#DEA514', color: '#DEA514', '&:hover': { borderColor: '#B88A10', color: '#B88A10' } }}
+            >
+              Logout
+            </Button>
+          </Box>
         </Box>
 
         <Paper elevation={2} sx={{ p: { xs: 2, sm: 4 }, bgcolor: '#FFFFFF', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: { xs: 2, sm: 3 }, width: '100%', maxWidth: '500px', mx: 'auto' }}>
@@ -352,6 +389,14 @@ const StudentDashboard = () => {
           <Button onClick={handleConfirmAttendance} color="primary" variant="contained">Confirm</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Profile Modal */}
+      <StudentProfileModal 
+        open={profileModalOpen} 
+        onClose={handleCloseProfileModal} 
+        studentDetails={studentDetails}
+        setStudentDetails={setStudentDetails}
+      />
     </Box>
   );
 };
