@@ -530,8 +530,8 @@ def generate_event_qr(request, event_id):
         event = Event.objects.get(pk=event_uuid)
         
         # Create event attendance URL - this will be the data in the QR code
-        # We'll use a format like: /attend/{event_id}
-        attendance_url = f"{settings.FRONTEND_URL}/attend/{event_id}"
+        # Use the hosted domain instead of relying on settings
+        attendance_url = f"https://trueattend.onrender.com/attend/{event_id}"
         
         # Generate QR code
         qr = qrcode.QRCode(
