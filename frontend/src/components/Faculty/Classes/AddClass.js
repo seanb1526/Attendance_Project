@@ -22,6 +22,16 @@ const AddClass = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   
+  // Get current year for semester options
+  const currentYear = new Date().getFullYear();
+  // Create semester options
+  const semesterOptions = [
+    `Spring ${currentYear}`,
+    `Summer ${currentYear}`,
+    `Fall ${currentYear}`,
+    `Winter ${currentYear}`
+  ];
+  
   // Class state
   const [classData, setClassData] = useState({
     name: '',
@@ -257,9 +267,11 @@ const AddClass = () => {
                 value={classData.semester}
                 onChange={handleClassDataChange('semester')}
               >
-                <MenuItem value="Spring 2024">Spring 2024</MenuItem>
-                <MenuItem value="Summer 2024">Summer 2024</MenuItem>
-                <MenuItem value="Fall 2024">Fall 2024</MenuItem>
+                {semesterOptions.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
               </TextField>
             </Grid>
 
