@@ -35,6 +35,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import HistoryIcon from '@mui/icons-material/History';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
+import { getApiUrl } from '../../../utils/urlHelper';
 
 const EventsList = () => {
   const theme = useTheme();
@@ -222,8 +223,8 @@ const EventsList = () => {
   };
 
   const handleDownloadQrCode = (eventId) => {
-    // Use the full backend URL
-    window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
+    // Use the dynamic API URL helper instead of hardcoded URL
+    window.open(getApiUrl(`/api/event/${eventId}/qr/`), '_blank');
   };
 
   return (

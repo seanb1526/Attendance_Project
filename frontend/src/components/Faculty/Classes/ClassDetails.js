@@ -22,6 +22,7 @@ import EventIcon from '@mui/icons-material/Event';
 import PeopleIcon from '@mui/icons-material/People';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
+import { getApiUrl } from '../../../utils/urlHelper';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -201,8 +202,8 @@ const ClassDetails = () => {
   }
 
   const handleDownloadQrCode = (eventId) => {
-    // Use the full backend URL
-    window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
+    // Use the dynamic API URL helper instead of hardcoded URL
+    window.open(getApiUrl(`/api/event/${eventId}/qr/`), '_blank');
   };
 
   const handleDownloadAttendanceReport = async (eventId, eventName, e) => {
