@@ -39,6 +39,14 @@ const ClassesList = () => {
         // Fetch classes where faculty ID matches
         const response = await axios.get(`/api/classes/?faculty=${facultyId}`);
         
+        // Check if we got valid data back
+        if (!Array.isArray(response.data)) {
+          console.error('Unexpected API response format:', response.data);
+          setError('Received invalid data from server.');
+          setLoading(false);
+          return;
+        }
+        
         // Transform the data to match our UI needs
         const classesWithDetails = response.data.map(classItem => {
           // Try to parse metadata from description field if it exists

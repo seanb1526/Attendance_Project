@@ -249,6 +249,48 @@ class EventViewSet(viewsets.ModelViewSet):
 class ClassViewSet(viewsets.ModelViewSet):
     queryset = Class.objects.all()
     serializer_class = ClassSerializer
+    
+    def get_queryset(self):
+        """
+        This view should return a list of all classes
+        for the currently authenticated faculty.
+        """
+        queryset = Class.objects.all()
+        
+        # Get faculty_id from query parameters
+        faculty_id = self.request.query_params.get('faculty', None)
+        
+        # Filter by faculty ID if provided
+        if faculty_id is not None:
+            queryset = queryset.filter(faculty=faculty_id)
+            
+        return queryset
+    
+    def perform_create(self, serializer):
+        serializer.save()
+    
+    def perform_update(self, serializer):
+        # Ensure only the creator can update
+        class_instance = self.get_object()
+        faculty_id = self.request.query_params.get('faculty_id')
+        if not faculty_id:
+            faculty_id = self.request.data.get('faculty')
+            
+        if str(class_instance.faculty.id) != str(faculty_id):
+            raise PermissionDenied("You don't have permission to edit this class")
+        
+        serializer.save()
+    
+    def perform_destroy(self, instance):
+        # Ensure only the creator can delete
+        faculty_id = self.request.query_params.get('faculty_id')
+        if not faculty_id:
+            faculty_id = self.request.data.get('faculty')
+            
+        if str(instance.faculty.id) != str(faculty_id):
+            raise PermissionDenied("You don't have permission to delete this class")
+        
+        instance.delete()
 
 # ---------------- Attendance ViewSet ----------------
 class AttendanceViewSet(viewsets.ModelViewSet):
