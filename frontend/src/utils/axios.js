@@ -1,12 +1,19 @@
 import axios from 'axios';
 
+// Create a custom axios instance with baseURL
+const instance = axios.create({
+  // Change this to use the production URL when not in development
+  baseURL: process.env.NODE_ENV === 'development' 
+    ? 'http://localhost:8000'
+    : 'https://trueattend.onrender.com',
+});
+
 // Configure axios defaults
 // Use relative URLs to make it work regardless of deployment
-axios.defaults.baseURL = '/';
-axios.defaults.headers.common['Content-Type'] = 'application/json';
+instance.defaults.headers.common['Content-Type'] = 'application/json';
 
 // Add request interceptor for debugging
-axios.interceptors.request.use(
+instance.interceptors.request.use(
   config => {
     console.log('Request being sent:', {
       url: config.url,
@@ -22,4 +29,4 @@ axios.interceptors.request.use(
   }
 );
 
-export default axios;
+export default instance;
