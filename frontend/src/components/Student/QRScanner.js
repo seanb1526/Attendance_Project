@@ -556,7 +556,8 @@ const QRScanner = () => {
                   <Typography variant="h6" color="primary">{eventDetails.name}</Typography>
                   <Typography variant="body1" sx={{ mt: 1 }}>{eventDetails.location || 'No location specified'}</Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    {new Date(eventDetails.date).toLocaleString()}
+                    {new Date(eventDetails.date).toLocaleDateString()}, {new Date(eventDetails.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {eventDetails.end_time && ` - ${new Date(eventDetails.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                   </Typography>
                   
                   <Box sx={{ 

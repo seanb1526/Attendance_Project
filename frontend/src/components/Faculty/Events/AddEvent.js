@@ -17,7 +17,7 @@ import {
   FormHelperText,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../../../utils/axios';
 
 const AddEvent = () => {
   const theme = useTheme();
@@ -30,10 +30,11 @@ const AddEvent = () => {
     name: '',
     description: '',
     date: '',
-    time: '',
+    time: '',      // Keep this for backwards compatibility
+    endTime: '',   // Add new endTime field
     location: '',
-    checkin_before_minutes: 15,  // Default: 15 minutes before
-    checkin_after_minutes: 15,   // Default: 15 minutes after
+    checkin_before_minutes: 15,
+    checkin_after_minutes: 15,
   });
 
   // Generate 15-minute interval options from 0 to 120 minutes (2 hours)
@@ -51,6 +52,12 @@ const AddEvent = () => {
       // Format the date and time for the API
       const dateTime = new Date(`${eventData.date}T${eventData.time}`).toISOString();
       
+      // Format end time if provided
+      let endDateTime = null;
+      if (eventData.endTime && eventData.endTime.trim() !== '') {
+        endDateTime = new Date(`${eventData.date}T${eventData.endTime}`).toISOString();
+      }
+      
       // Get faculty ID from local storage or context
       const facultyId = localStorage.getItem('facultyId');
       const schoolId = localStorage.getItem('schoolId');
@@ -59,12 +66,15 @@ const AddEvent = () => {
         name: eventData.name,
         description: eventData.description,
         date: dateTime,
+        end_time: endDateTime,  // Ensure this is included in the payload
         location: eventData.location,
         faculty: facultyId,
         school: schoolId,
         checkin_before_minutes: eventData.checkin_before_minutes,
         checkin_after_minutes: eventData.checkin_after_minutes,
       };
+      
+      console.log('Submitting event with payload:', eventPayload); // Debug log
       
       // Make the API request
       await axios.post('/api/events/', eventPayload);
@@ -145,7 +155,7 @@ const AddEvent = () => {
             />
           </Grid>
           
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
               label="Time"
@@ -154,6 +164,18 @@ const AddEvent = () => {
               InputLabelProps={{ shrink: true }}
               value={eventData.time}
               onChange={handleChange('time')}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={3}>
+            <TextField
+              fullWidth
+              label="End Time"
+              type="time"
+              InputLabelProps={{ shrink: true }}
+              value={eventData.endTime}
+              onChange={handleChange('endTime')}
+              placeholder="Optional"
             />
           </Grid>
 

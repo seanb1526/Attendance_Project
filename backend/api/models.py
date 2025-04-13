@@ -52,6 +52,7 @@ class Event(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     date = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)  # New field for event end time
     location = models.CharField(max_length=255, blank=True, null=True)
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE)
     school = models.ForeignKey(School, on_delete=models.CASCADE)

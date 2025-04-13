@@ -71,7 +71,7 @@ class FacultyRegistrationSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = ['id', 'name', 'description', 'date', 'location', 'faculty', 'school', 
+        fields = ['id', 'name', 'description', 'date', 'end_time', 'location', 'faculty', 'school', 
                  'checkin_before_minutes', 'checkin_after_minutes']
 
 # ---------------- Class Serializer ----------------

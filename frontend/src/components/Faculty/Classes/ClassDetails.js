@@ -353,7 +353,14 @@ const ClassDetails = () => {
                     // Format date and time for display
                     const eventDate = new Date(event.date);
                     const formattedDate = eventDate.toLocaleDateString();
-                    const formattedTime = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const formattedStartTime = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    // Format end time if available
+                    let formattedEndTime = '';
+                    if (event.end_time) {
+                      const endDate = new Date(event.end_time);
+                      formattedEndTime = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
                     
                     return (
                       <Grid item xs={12} sm={6} md={4} key={event.id}>
@@ -395,7 +402,7 @@ const ClassDetails = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                             <AccessTimeIcon sx={{ fontSize: 18, mr: 1, color: '#666' }} />
                             <Typography variant="body2" color="text.secondary">
-                              {formattedTime}
+                              {formattedStartTime}{formattedEndTime ? ` - ${formattedEndTime}` : ''}
                             </Typography>
                           </Box>
                           

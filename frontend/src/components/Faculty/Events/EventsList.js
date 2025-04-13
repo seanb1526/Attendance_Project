@@ -33,6 +33,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
 import HistoryIcon from '@mui/icons-material/History';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
 import { getApiUrl } from '../../../utils/urlHelper';
@@ -359,6 +360,7 @@ const EventsList = () => {
             <Grid container spacing={3}>
               {events.map((event) => {
                 const { date, time } = formatDateTime(event.date);
+                const endTime = event.end_time ? formatDateTime(event.end_time).time : null;
                 const eventDate = new Date(event.date);
                 const isPast = isEventPast(event.date);
                 const isToday = isEventToday(event.date);
@@ -400,7 +402,13 @@ const EventsList = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <CalendarTodayIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
                           <Typography variant="body2" color="text.secondary">
-                            {date} at {time}
+                            {date}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <AccessTimeIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {time}{endTime ? ` - ${endTime}` : ''}
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>

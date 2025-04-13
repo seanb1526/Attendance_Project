@@ -559,16 +559,21 @@ def generate_event_qr(request, event_id):
         pdf.drawString(1*inch, 10*inch, f"Event: {event.name}")
         pdf.setFont("Helvetica", 12)
         
-        # Handle date formatting based on available fields
-        if hasattr(event, 'start_time') and event.start_time:
-            pdf.drawString(1*inch, 9.5*inch, f"Date: {event.start_time.strftime('%B %d, %Y')}")
-            pdf.drawString(1*inch, 9.0*inch, f"Time: {event.start_time.strftime('%I:%M %p')} - {event.end_time.strftime('%I:%M %p')}")
-        elif hasattr(event, 'date') and event.date:
-            # If you're using a 'date' field instead of start_time/end_time
-            pdf.drawString(1*inch, 9.5*inch, f"Date: {event.date.strftime('%B %d, %Y')}")
+        # Format and display date and time
+        event_date = event.date.strftime('%B %d, %Y')
+        start_time = event.date.strftime('%I:%M %p')
+        
+        pdf.drawString(1*inch, 9.5*inch, f"Date: {event_date}")
+        
+        # If end time exists, display start time and end time, otherwise just start time
+        if event.end_time:
+            end_time = event.end_time.strftime('%I:%M %p')
+            pdf.drawString(1*inch, 9.0*inch, f"Time: {start_time} - {end_time}")
+        else:
+            pdf.drawString(1*inch, 9.0*inch, f"Time: {start_time}")
         
         # Add location if available
-        if hasattr(event, 'location') and event.location:
+        if event.location:
             pdf.drawString(1*inch, 8.5*inch, f"Location: {event.location}")
         
         # Add instructions
@@ -760,6 +765,7 @@ def get_student_attendance(request, student_id):
                 'event_id': str(event.id),
                 'event_name': event.name,
                 'event_date': event.date,
+                'event_end_time': event.end_time,  # Include the end_time field here
                 'event_location': event.location or 'No location specified',
                 'scanned_at': record.scanned_at,
             })
