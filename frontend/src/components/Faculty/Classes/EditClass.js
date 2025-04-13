@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -24,15 +24,15 @@ const EditClass = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   
-  // Get current year for semester options
+  // Get current year for semester options - moved outside of render cycle
   const currentYear = new Date().getFullYear();
-  // Create semester options
-  const semesterOptions = [
+  // Create semester options using useMemo to prevent recreation on each render
+  const semesterOptions = useMemo(() => [
     `Spring ${currentYear}`,
     `Summer ${currentYear}`,
     `Fall ${currentYear}`,
     `Winter ${currentYear}`
-  ];
+  ], [currentYear]);
   
   // Class state
   const [classData, setClassData] = useState({
@@ -98,7 +98,7 @@ const EditClass = () => {
     };
     
     fetchClassDetails();
-  }, [id, semesterOptions]);
+  }, [id]); // Removed semesterOptions from dependency array since it's now memoized
 
   const handleClassDataChange = (field) => (event) => {
     setClassData({

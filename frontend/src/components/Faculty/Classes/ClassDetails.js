@@ -46,9 +46,15 @@ const ClassDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [attendanceLoading, setAttendanceLoading] = useState({});
+  // Add a ref to prevent double fetching on mount
+  const hasLoadedRef = React.useRef(false);
 
   useEffect(() => {
     const fetchClassDetails = async () => {
+      // Prevent duplicate fetches on strict mode double mounting
+      if (hasLoadedRef.current) return;
+      hasLoadedRef.current = true;
+      
       try {
         setLoading(true);
         
