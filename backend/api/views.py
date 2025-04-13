@@ -410,7 +410,8 @@ def create_class(request):
         class_data = {
             'name': request.data.get('name'),
             'faculty': faculty.id,
-            'school': faculty.school.id
+            'school': faculty.school.id,
+            'semester': request.data.get('semester')  # Add semester field
         }
         
         serializer = ClassSerializer(data=class_data)
@@ -474,6 +475,10 @@ def update_class(request, pk):
         # Update basic class information
         class_instance.name = request.data.get('name', class_instance.name)
         
+        # Update semester field directly
+        if 'semester' in request.data:
+            class_instance.semester = request.data['semester']
+            
         # Update description/metadata
         if 'description' in request.data:
             class_instance.description = request.data['description']

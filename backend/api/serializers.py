@@ -80,7 +80,7 @@ class ClassSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Class
-        fields = ['id', 'name', 'faculty', 'school', 'students']
+        fields = ['id', 'name', 'faculty', 'school', 'students', 'semester']
         
     def get_students(self, obj):
         class_students = ClassStudent.objects.filter(class_instance=obj)

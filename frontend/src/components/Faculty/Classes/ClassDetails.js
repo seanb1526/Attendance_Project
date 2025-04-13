@@ -16,6 +16,8 @@ import {
   useMediaQuery,
   CircularProgress,
   Alert,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import EventIcon from '@mui/icons-material/Event';
@@ -47,6 +49,24 @@ const ClassDetails = () => {
   const [error, setError] = useState('');
   const [selectedClasses, setSelectedClasses] = useState([]);
   const [attendanceLoading, setAttendanceLoading] = useState({});
+
+  // Get current year for semester options
+  const currentYear = new Date().getFullYear();
+  // Create semester options
+  const semesterOptions = [
+    `Spring ${currentYear}`,
+    `Summer ${currentYear}`,
+    `Fall ${currentYear}`,
+    `Winter ${currentYear}`
+  ];
+  
+  // Add the missing handleClassDataChange function
+  const handleClassDataChange = (field) => (event) => {
+    setClassData({
+      ...classData,
+      [field]: event.target.value
+    });
+  };
 
   useEffect(() => {
     const fetchClassDetails = async () => {
@@ -271,10 +291,21 @@ const ClassDetails = () => {
                 {classData.code}{classData.section ? ` - Section ${classData.section}` : ''}
               </Typography>
             )}
-            <Chip 
-              label={classData.semester} 
-              sx={{ mt: 1, bgcolor: '#DEA514', color: 'white' }}
-            />
+            <TextField
+              fullWidth
+              select
+              label="Semester"
+              variant="outlined"
+              value={classData.semester || semesterOptions[0]}
+              onChange={handleClassDataChange('semester')}
+              sx={{ mb: 2 }}
+            >
+              {semesterOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
           <Button
             variant="outlined"

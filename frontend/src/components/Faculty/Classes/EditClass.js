@@ -12,6 +12,7 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
+  MenuItem,
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -22,6 +23,16 @@ const EditClass = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const { id } = useParams();
+  
+  // Get current year for semester options
+  const currentYear = new Date().getFullYear();
+  // Create semester options
+  const semesterOptions = [
+    `Spring ${currentYear}`,
+    `Summer ${currentYear}`,
+    `Fall ${currentYear}`,
+    `Winter ${currentYear}`
+  ];
   
   // Class state
   const [classData, setClassData] = useState({
@@ -57,7 +68,6 @@ const EditClass = () => {
         let metadata = {
           code: '',
           section: '',
-          semester: 'Current Semester',
           description: ''
         };
         
@@ -70,12 +80,12 @@ const EditClass = () => {
           console.error('Error parsing class metadata:', e);
         }
         
-        // Set class data
+        // Set class data - now use the actual semester field from the database
         setClassData({
           name: classResponse.data.name,
           code: metadata.code || '',
           section: metadata.section || '',
-          semester: metadata.semester || 'Current Semester',
+          semester: classResponse.data.semester || semesterOptions[0], // Default to first semester option if none
           description: metadata.description || ''
         });
         
@@ -165,7 +175,6 @@ const EditClass = () => {
       const metadata = {
         code: classData.code,
         section: classData.section,
-        semester: classData.semester,
         description: classData.description
       };
       
@@ -212,13 +221,14 @@ const EditClass = () => {
         }
       }
       
-      // Prepare the payload
+      // Prepare the payload - include semester field directly
       const payload = {
         name: classData.name,
         description: JSON.stringify(metadata),
         faculty: facultyId,
         school: schoolId,
-        students: studentIds
+        students: studentIds,
+        semester: classData.semester // Include semester directly in the payload
       };
       
       // Update the class
@@ -334,12 +344,19 @@ const EditClass = () => {
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
+              select
               label="Semester"
               variant="outlined"
-              value={classData.semester}
+              value={classData.semester || semesterOptions[0]}
               onChange={handleClassDataChange('semester')}
               sx={{ mb: 2 }}
-            />
+            >
+              {semesterOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           
           <Grid item xs={12}>
@@ -549,4 +566,4 @@ const EditClass = () => {
   );
 };
 
-export default EditClass; 
+export default EditClass;

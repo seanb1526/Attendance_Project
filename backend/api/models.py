@@ -36,6 +36,7 @@ class Class(models.Model):
     name = models.CharField(max_length=255)
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE)
     school = models.ForeignKey(School, on_delete=models.CASCADE)
+    semester = models.CharField(max_length=100, blank=True, null=True)  # New field for semester information
 
     def __str__(self):
         return self.name

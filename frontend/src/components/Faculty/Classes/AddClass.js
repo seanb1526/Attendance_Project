@@ -112,7 +112,6 @@ const AddClass = () => {
       const metadata = {
         code: classData.code,
         section: classData.section,
-        semester: classData.semester,
         description: classData.description
       };
       
@@ -160,7 +159,8 @@ const AddClass = () => {
         name: classData.name,
         faculty_id: facultyId,
         metadata: JSON.stringify(metadata),
-        students: studentIds
+        students: studentIds,
+        semester: classData.semester  // Add the semester field here
       });
       
       setSuccess('Class created successfully!');
