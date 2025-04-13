@@ -116,7 +116,7 @@ const Navbar = () => {
         boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
       }}
     >
-      <Toolbar>
+      <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography 
           variant="h6" 
           component={RouterLink} 
@@ -145,7 +145,7 @@ const Navbar = () => {
             <MenuIcon />
           </IconButton>
         ) : (
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Button 
               component={RouterLink} 
               to="/about"

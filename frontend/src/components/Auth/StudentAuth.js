@@ -24,7 +24,9 @@ const StudentAuth = () => {
       justifyContent: 'center',
       bgcolor: '#F5F5DC',
       px: isMobile ? 2 : 0,
-      py: 6
+      py: 6,
+      pt: { xs: 5, sm: 6 }, // Reduced top padding by half
+      mt: { xs: 1, sm: 2 }  // Reduced top margin by half
     }}>
       <Container maxWidth="md" sx={{ width: '100%' }}>
         <Typography
@@ -54,16 +56,18 @@ const StudentAuth = () => {
         
         <Box sx={{ maxWidth: '650px', mx: 'auto' }}>
           <Paper
+            elevation={3}
             sx={{
-              p: 4,
+              p: { xs: 3, sm: 4 },
               textAlign: 'center',
               height: '100%',
               bgcolor: '#FFFFFF',
               transition: 'transform 0.2s, box-shadow 0.2s',
+              borderRadius: 2,
             }}
           >
             <SchoolIcon sx={{ 
-              fontSize: 64,
+              fontSize: { xs: 48, sm: 64 },
               color: '#DEA514' 
             }} />
             <Typography 
@@ -73,7 +77,7 @@ const StudentAuth = () => {
                 mt: 3, 
                 mb: 2, 
                 color: '#2C2C2C',
-                fontSize: '1.5rem'
+                fontSize: { xs: '1.3rem', sm: '1.5rem' }
               }}
             >
               Student
@@ -82,14 +86,14 @@ const StudentAuth = () => {
               color="text.secondary" 
               sx={{ 
                 mb: 4,
-                fontSize: '1rem',
+                fontSize: { xs: '0.9rem', sm: '1rem' },
                 maxWidth: '420px',
                 mx: 'auto'
               }}
             >
               Access your attendance records, scan QR codes for events, and manage your student profile.
             </Typography>
-            <Grid container spacing={3} justifyContent="center">
+            <Grid container spacing={{ xs: 2, sm: 3 }} justifyContent="center">
               <Grid item xs={12} sm={6}>
                 <Button 
                   variant="contained" 
@@ -101,7 +105,7 @@ const StudentAuth = () => {
                     '&:hover': {
                       bgcolor: '#B88A10',
                     },
-                    py: 1.5
+                    py: { xs: 1.2, sm: 1.5 }
                   }}
                 >
                   Sign In
@@ -121,7 +125,7 @@ const StudentAuth = () => {
                       color: '#B88A10',
                       bgcolor: 'rgba(222, 165, 20, 0.04)'
                     },
-                    py: 1.5
+                    py: { xs: 1.2, sm: 1.5 }
                   }}
                 >
                   Register
