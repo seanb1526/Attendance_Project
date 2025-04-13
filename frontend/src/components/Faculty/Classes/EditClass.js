@@ -80,12 +80,12 @@ const EditClass = () => {
           console.error('Error parsing class metadata:', e);
         }
         
-        // Set class data - now use the actual semester field from the database
+        // Set class data - use semester directly from the response
         setClassData({
           name: classResponse.data.name,
           code: metadata.code || '',
           section: metadata.section || '',
-          semester: classResponse.data.semester || semesterOptions[0], // Default to first semester option if none
+          semester: classResponse.data.semester || semesterOptions[0], // Get semester directly from API response
           description: metadata.description || ''
         });
         
@@ -120,7 +120,7 @@ const EditClass = () => {
     };
     
     fetchClassDetails();
-  }, [id]);
+  }, [id, semesterOptions]);
 
   const handleClassDataChange = (field) => (event) => {
     setClassData({
@@ -230,6 +230,8 @@ const EditClass = () => {
         students: studentIds,
         semester: classData.semester // Include semester directly in the payload
       };
+      
+      console.log("Updating class with payload:", payload); // Debug log to verify semester is included
       
       // Update the class
       const classResponse = await axios.put(`/api/class/${id}/update/`, payload);

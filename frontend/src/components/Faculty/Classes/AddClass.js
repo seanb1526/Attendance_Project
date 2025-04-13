@@ -154,13 +154,14 @@ const AddClass = () => {
       
       console.log('Student IDs to be added to class:', studentIds);
       
-      // Create the class with the /api/class/create/ endpoint
+      // Create the class - ensure semester is sent directly
       const classResponse = await axios.post('/api/class/create/', {
         name: classData.name,
         faculty_id: facultyId,
         metadata: JSON.stringify(metadata),
         students: studentIds,
-        semester: classData.semester  // Add the semester field here
+        semester: classData.semester,  // Make sure semester is sent directly
+        school: schoolId  // Add school ID explicitly
       });
       
       setSuccess('Class created successfully!');

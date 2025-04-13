@@ -292,13 +292,13 @@ const ClassDetails = () => {
               </Typography>
             )}
             <TextField
-              fullWidth
               select
               label="Semester"
               variant="outlined"
               value={classData.semester || semesterOptions[0]}
               onChange={handleClassDataChange('semester')}
-              sx={{ mb: 2 }}
+              sx={{ mt: 2, mb: 2, minWidth: 200 }}
+              InputProps={{ readOnly: true }}
             >
               {semesterOptions.map((option) => (
                 <MenuItem key={option} value={option}>
