@@ -5,6 +5,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
 import AuthLanding from './components/Auth/AuthLanding';
+import StudentAuth from './components/Auth/StudentAuth';
+import FacultyAuth from './components/Auth/FacultyAuth';
 import StudentDashboard from './components/Student/StudentDashboard';
 import FacultyDashboard from './components/Faculty/FacultyDashboard';
 import About from './components/About/About';
@@ -125,6 +127,8 @@ function App() {
                 <Navbar />
                 <Routes>
                   <Route path="/" element={<AuthLanding />} />
+                  <Route path="/student" element={<StudentAuth />} />
+                  <Route path="/faculty" element={<FacultyAuth />} />
                   <Route path="/student/signin" element={<StudentSignIn />} />
                   <Route path="/student/register" element={<StudentRegister />} />
                   <Route path="/faculty/signin" element={<FacultySignIn />} />

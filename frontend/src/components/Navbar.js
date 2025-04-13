@@ -11,7 +11,8 @@ import {
   Drawer,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  ListItemButton
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
@@ -49,62 +50,73 @@ const Navbar = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleSignInClick = () => {
-    if (isAuthenticated) {
-      if (userType === 'faculty') {
-        navigate('/faculty/dashboard');
-      } else if (userType === 'student') {
-        navigate('/student/dashboard');
-      }
+  const handleStudentClick = () => {
+    if (isAuthenticated && userType === 'student') {
+      navigate('/student/dashboard');
     } else {
-      navigate('/auth');
+      navigate('/auth/student');
+    }
+  };
+
+  const handleFacultyClick = () => {
+    if (isAuthenticated && userType === 'faculty') {
+      navigate('/faculty/dashboard');
+    } else {
+      navigate('/auth/faculty');
     }
   };
 
   const menuItems = [
     { text: 'About', path: '/about' },
-    { 
-      text: isAuthenticated ? 'Go to Dashboard' : 'Sign In / Register', 
-      path: isAuthenticated 
-        ? (userType === 'faculty' ? '/faculty/dashboard' : '/student/dashboard') 
-        : '/auth'
-    }
+    // Remove the old combined sign-in menu item
   ];
 
+  // Define the drawer component
   const drawer = (
-    <Box sx={{ width: 250, pt: 2 }}>
+    <Box sx={{ width: 250, p: 2 }}>
       <List>
-        {menuItems.map((item) => (
-          <ListItem 
-            key={item.text} 
-            component={RouterLink} 
-            to={item.path}
-            onClick={handleDrawerToggle}
-            sx={{
-              color: '#2C2C2C',
-              '&:hover': {
-                backgroundColor: 'rgba(222, 165, 20, 0.08)',
-              }
-            }}
-          >
+        <ListItem disablePadding>
+          <ListItemButton component={RouterLink} to="/about">
+            <ListItemText primary="About" />
+          </ListItemButton>
+        </ListItem>
+        
+        <ListItem disablePadding>
+          <ListItemButton onClick={handleStudentClick}>
             <ListItemText 
-              primary={item.text}
-              sx={{
-                color: item.text === 'Sign In / Register' || item.text === 'Go to Dashboard' 
-                  ? '#DEA514' : 'inherit',
-                fontWeight: item.text === 'Sign In / Register' || item.text === 'Go to Dashboard' 
-                  ? 'bold' : 'normal',
+              primary={(isAuthenticated && userType === 'student') ? 'Student Dashboard' : 'Students'} 
+              primaryTypographyProps={{
+                color: (isAuthenticated && userType === 'student') ? '#DEA514' : 'inherit',
+                fontWeight: (isAuthenticated && userType === 'student') ? 'bold' : 'normal',
               }}
             />
-          </ListItem>
-        ))}
+          </ListItemButton>
+        </ListItem>
+        
+        <ListItem disablePadding>
+          <ListItemButton onClick={handleFacultyClick}>
+            <ListItemText 
+              primary={(isAuthenticated && userType === 'faculty') ? 'Faculty Dashboard' : 'Faculty'} 
+              primaryTypographyProps={{
+                color: (isAuthenticated && userType === 'faculty') ? '#DEA514' : 'inherit',
+                fontWeight: (isAuthenticated && userType === 'faculty') ? 'bold' : 'normal',
+              }}
+            />
+          </ListItemButton>
+        </ListItem>
       </List>
     </Box>
   );
 
   return (
-    <AppBar position="fixed">
-      <Toolbar sx={{ justifyContent: 'space-between' }}>
+    <AppBar 
+      position="fixed" 
+      sx={{ 
+        bgcolor: 'white', 
+        boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+      }}
+    >
+      <Toolbar>
         <Typography 
           variant="h6" 
           component={RouterLink} 
@@ -146,21 +158,38 @@ const Navbar = () => {
             >
               About
             </Button>
-            {!isStudentDashboard && (
-              <Button 
-                variant="contained"
-                onClick={handleSignInClick}
-                sx={{ 
-                  ml: 2,
-                  bgcolor: '#DEA514',
-                  '&:hover': {
-                    bgcolor: '#B88A10',
-                  }
-                }}
-              >
-                {isAuthenticated ? 'Go to Dashboard' : 'Sign In / Register'}
-              </Button>
-            )}
+            
+            <Button 
+              onClick={handleStudentClick}
+              sx={{ 
+                ml: 2,
+                color: (isAuthenticated && userType === 'student') ? '#FFFFFF' : '#DEA514',
+                bgcolor: (isAuthenticated && userType === 'student') ? '#DEA514' : 'transparent',
+                border: '1px solid #DEA514',
+                '&:hover': {
+                  bgcolor: (isAuthenticated && userType === 'student') ? '#B88A10' : 'rgba(222, 165, 20, 0.04)',
+                  color: (isAuthenticated && userType === 'student') ? '#FFFFFF' : '#B88A10',
+                }
+              }}
+            >
+              {(isAuthenticated && userType === 'student') ? 'Student Dashboard' : 'Students'}
+            </Button>
+            
+            <Button 
+              onClick={handleFacultyClick}
+              sx={{ 
+                ml: 2,
+                color: (isAuthenticated && userType === 'faculty') ? '#FFFFFF' : '#DEA514',
+                bgcolor: (isAuthenticated && userType === 'faculty') ? '#DEA514' : 'transparent',
+                border: '1px solid #DEA514',
+                '&:hover': {
+                  bgcolor: (isAuthenticated && userType === 'faculty') ? '#B88A10' : 'rgba(222, 165, 20, 0.04)',
+                  color: (isAuthenticated && userType === 'faculty') ? '#FFFFFF' : '#B88A10',
+                }
+              }}
+            >
+              {(isAuthenticated && userType === 'faculty') ? 'Faculty Dashboard' : 'Faculty'}
+            </Button>
           </Box>
         )}
 
@@ -188,4 +217,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar; 
+export default Navbar;
