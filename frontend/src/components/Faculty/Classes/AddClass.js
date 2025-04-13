@@ -35,10 +35,7 @@ const AddClass = () => {
   // Class state
   const [classData, setClassData] = useState({
     name: '',
-    code: '',
-    section: '',
     semester: '',
-    description: '',
   });
 
   // Students state
@@ -108,13 +105,6 @@ const AddClass = () => {
         return;
       }
       
-      // Prepare class metadata (for fields not in the model)
-      const metadata = {
-        code: classData.code,
-        section: classData.section,
-        description: classData.description
-      };
-      
       // Register new students first if they don't exist
       const schoolId = localStorage.getItem('schoolId');
       const studentIds = [];
@@ -158,10 +148,10 @@ const AddClass = () => {
       const classResponse = await axios.post('/api/class/create/', {
         name: classData.name,
         faculty_id: facultyId,
-        metadata: JSON.stringify(metadata),
+        metadata: JSON.stringify({}), // Empty metadata since we removed those fields
         students: studentIds,
-        semester: classData.semester,  // Make sure semester is sent directly
-        school: schoolId  // Add school ID explicitly
+        semester: classData.semester,
+        school: schoolId
       });
       
       setSuccess('Class created successfully!');
@@ -170,10 +160,7 @@ const AddClass = () => {
       // Reset form
       setClassData({
         name: '',
-        code: '',
-        section: '',
         semester: '',
-        description: '',
       });
       setStudents([]);
       
@@ -240,26 +227,6 @@ const AddClass = () => {
               />
             </Grid>
             
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Class Code"
-                placeholder="e.g., CS101"
-                value={classData.code}
-                onChange={handleClassDataChange('code')}
-              />
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Section"
-                placeholder="e.g., A"
-                value={classData.section}
-                onChange={handleClassDataChange('section')}
-              />
-            </Grid>
-
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -274,18 +241,6 @@ const AddClass = () => {
                   </MenuItem>
                 ))}
               </TextField>
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label="Description"
-                placeholder="Enter class description..."
-                value={classData.description}
-                onChange={handleClassDataChange('description')}
-              />
             </Grid>
 
             <Grid item xs={12}>

@@ -16,8 +16,8 @@ import {
   useMediaQuery,
   CircularProgress,
   Alert,
-  TextField,
-  MenuItem,
+  Avatar,
+  ListItemAvatar,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import EventIcon from '@mui/icons-material/Event';
@@ -31,8 +31,6 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-import Avatar from '@mui/material/Avatar';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
 import DownloadIcon from '@mui/icons-material/Download';
 
 const ClassDetails = () => {
@@ -47,26 +45,7 @@ const ClassDetails = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedClasses, setSelectedClasses] = useState([]);
   const [attendanceLoading, setAttendanceLoading] = useState({});
-
-  // Get current year for semester options
-  const currentYear = new Date().getFullYear();
-  // Create semester options
-  const semesterOptions = [
-    `Spring ${currentYear}`,
-    `Summer ${currentYear}`,
-    `Fall ${currentYear}`,
-    `Winter ${currentYear}`
-  ];
-  
-  // Add the missing handleClassDataChange function
-  const handleClassDataChange = (field) => (event) => {
-    setClassData({
-      ...classData,
-      [field]: event.target.value
-    });
-  };
 
   useEffect(() => {
     const fetchClassDetails = async () => {
@@ -286,26 +265,12 @@ const ClassDetails = () => {
             <Typography variant="h4" sx={{ color: '#2C2C2C', fontWeight: 'bold' }}>
               {classData.name}
             </Typography>
-            {classData.code && (
+            {/* Display semester as text instead of dropdown */}
+            {classData.semester && (
               <Typography variant="subtitle1" sx={{ color: '#666', mt: 1 }}>
-                {classData.code}{classData.section ? ` - Section ${classData.section}` : ''}
+                {classData.semester}
               </Typography>
             )}
-            <TextField
-              select
-              label="Semester"
-              variant="outlined"
-              value={classData.semester || semesterOptions[0]}
-              onChange={handleClassDataChange('semester')}
-              sx={{ mt: 2, mb: 2, minWidth: 200 }}
-              InputProps={{ readOnly: true }}
-            >
-              {semesterOptions.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
           </Box>
           <Button
             variant="outlined"
@@ -323,17 +288,6 @@ const ClassDetails = () => {
             Edit Class
           </Button>
         </Box>
-        
-        {classData.fullDescription && (
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              Description
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#666' }}>
-              {classData.fullDescription}
-            </Typography>
-          </Box>
-        )}
       </Paper>
 
       <Paper sx={{ 

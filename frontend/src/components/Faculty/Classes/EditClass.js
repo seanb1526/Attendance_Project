@@ -37,10 +37,7 @@ const EditClass = () => {
   // Class state
   const [classData, setClassData] = useState({
     name: '',
-    code: '',
-    section: '',
     semester: '',
-    description: '',
   });
 
   // Students state
@@ -64,29 +61,10 @@ const EditClass = () => {
         // Fetch the class data
         const classResponse = await axios.get(`/api/classes/${id}/`);
         
-        // Parse metadata if available
-        let metadata = {
-          code: '',
-          section: '',
-          description: ''
-        };
-        
-        try {
-          if (classResponse.data.description) {
-            const parsedMetadata = JSON.parse(classResponse.data.description);
-            metadata = { ...metadata, ...parsedMetadata };
-          }
-        } catch (e) {
-          console.error('Error parsing class metadata:', e);
-        }
-        
         // Set class data - use semester directly from the response
         setClassData({
           name: classResponse.data.name,
-          code: metadata.code || '',
-          section: metadata.section || '',
           semester: classResponse.data.semester || semesterOptions[0], // Get semester directly from API response
-          description: metadata.description || ''
         });
         
         // Fetch students enrolled in this class
@@ -171,13 +149,6 @@ const EditClass = () => {
         return;
       }
       
-      // Prepare class metadata (for fields not in the model)
-      const metadata = {
-        code: classData.code,
-        section: classData.section,
-        description: classData.description
-      };
-      
       // Register/lookup new students
       const schoolId = localStorage.getItem('schoolId');
       const studentIds = [];
@@ -224,7 +195,7 @@ const EditClass = () => {
       // Prepare the payload - include semester field directly
       const payload = {
         name: classData.name,
-        description: JSON.stringify(metadata),
+        description: JSON.stringify({}), // Empty metadata since we removed those fields
         faculty: facultyId,
         school: schoolId,
         students: studentIds,
@@ -321,29 +292,7 @@ const EditClass = () => {
             />
           </Grid>
           
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Class Code"
-              variant="outlined"
-              value={classData.code}
-              onChange={handleClassDataChange('code')}
-              sx={{ mb: 2 }}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Section"
-              variant="outlined"
-              value={classData.section}
-              onChange={handleClassDataChange('section')}
-              sx={{ mb: 2 }}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12}>
             <TextField
               fullWidth
               select
@@ -359,19 +308,6 @@ const EditClass = () => {
                 </MenuItem>
               ))}
             </TextField>
-          </Grid>
-          
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Description (Optional)"
-              variant="outlined"
-              value={classData.description}
-              onChange={handleClassDataChange('description')}
-              multiline
-              rows={3}
-              sx={{ mb: 2 }}
-            />
           </Grid>
         </Grid>
       </Paper>

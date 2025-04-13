@@ -49,22 +49,6 @@ const ClassesList = () => {
         
         // Transform the data to match our UI needs
         const classesWithDetails = response.data.map(classItem => {
-          // Try to parse metadata from description field if it exists
-          let code = '';
-          let section = '';
-          let description = '';
-          
-          try {
-            if (classItem.description) {
-              const metadata = JSON.parse(classItem.description);
-              code = metadata.code || '';
-              section = metadata.section || '';
-              description = metadata.description || '';
-            }
-          } catch (e) {
-            console.error('Error parsing class metadata:', e);
-          }
-          
           // Use the semester directly from the API, with fallback to current year
           const currentYear = new Date().getFullYear();
           const defaultSemester = `Spring ${currentYear}`;
@@ -72,10 +56,7 @@ const ClassesList = () => {
           return {
             id: classItem.id,
             name: classItem.name,
-            code,
-            section,
             semester: classItem.semester || defaultSemester,
-            description,
             students: Array.isArray(classItem.students) ? classItem.students.length : 0
           };
         });
@@ -187,19 +168,6 @@ const ClassesList = () => {
                     }}
                   >
                     {classItem.name}
-                  </Typography>
-                  <Typography 
-                    variant="subtitle2" 
-                    sx={{ 
-                      color: '#666',
-                      mb: 2
-                    }}
-                  >
-                    {classItem.code ? (
-                      classItem.section ? 
-                        `${classItem.code} - Section ${classItem.section}` : 
-                        classItem.code
-                    ) : ''}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                     <Chip 
