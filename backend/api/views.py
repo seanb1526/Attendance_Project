@@ -716,7 +716,9 @@ def get_class_event_attendance(request, event_id, class_id):
                 'email': record.student.email,
                 'student_id_number': record.student.student_id,
                 'attended': True,
-                'scanned_at': record.scanned_at
+                'scanned_at': record.scanned_at,
+                'location': record.location,     # Include location data
+                'device_id': record.device_id    # Include device ID data
             })
         
         return Response(attendance_data)

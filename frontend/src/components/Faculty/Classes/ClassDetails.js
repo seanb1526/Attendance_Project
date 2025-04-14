@@ -227,14 +227,68 @@ const ClassDetails = () => {
       
       const attendanceMap = {};
       attendanceResponse.data.forEach(record => {
-        attendanceMap[record.student_id] = true;
+        // Format the timestamp properly for CSV
+        let formattedTimestamp = '';
+        if (record.scanned_at) {
+          // Parse the date and format it as a string that Excel can recognize
+          const scanDate = new Date(record.scanned_at);
+          // Format: MM/DD/YYYY HH:MM:SS
+          formattedTimestamp = scanDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit', 
+            day: '2-digit'
+          }) + ' ' + 
+          scanDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+        }
+        
+        // Store the full attendance record with formatted timestamp
+        attendanceMap[record.student_id] = {
+          attended: true,
+          scanned_at: formattedTimestamp,
+          location: record.location || '',
+          device_id: record.device_id || ''
+        };
       });
       
-      let csvContent = "First Name,Last Name,Student ID,Email,Attended\n";
+      // Update CSV headers to include Location and DeviceID
+      let csvContent = "First Name,Last Name,Student ID,Email,Attended,Timestamp,Location,Device ID\n";
       
       students.forEach(student => {
-        const attended = attendanceMap[student.id] ? "Yes" : "No";
-        csvContent += `${student.firstName},${student.lastName},${student.studentId},${student.email},${attended}\n`;
+        const attendanceRecord = attendanceMap[student.id] || { 
+          attended: false, 
+          scanned_at: '',
+          location: '',
+          device_id: ''
+        };
+        
+        // Format location data if it exists and is in JSON format
+        let locationStr = '';
+        if (attendanceRecord.location) {
+          try {
+            // Try to parse the location as JSON
+            const locationObj = JSON.parse(attendanceRecord.location);
+            // Format as "lat, lng (accuracy)" but properly escaped for CSV
+            locationStr = `"${locationObj.latitude}, ${locationObj.longitude} (${locationObj.accuracy}m)"`;
+          } catch {
+            // If not valid JSON, use as-is but properly escaped
+            locationStr = `"${attendanceRecord.location}"`;
+          }
+        }
+        
+        // Make sure device_id is also properly escaped if it contains commas
+        const deviceId = attendanceRecord.device_id ? `"${attendanceRecord.device_id}"` : '';
+        
+        // Add quotes around fields that might contain commas to ensure CSV parsing works correctly
+        csvContent += `"${student.firstName}","${student.lastName}","${student.studentId}","${student.email}",` +
+                      `${attendanceRecord.attended ? "Yes" : "No"},` +
+                      `"${attendanceRecord.scanned_at}",` +
+                      `${locationStr},` +
+                      `${deviceId}\n`;
       });
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
