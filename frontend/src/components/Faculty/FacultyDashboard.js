@@ -53,6 +53,7 @@ const FacultyDashboard = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [facultyName, setFacultyName] = useState('Professor');
+  const [schoolName, setSchoolName] = useState('');  // Add state for school name
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -60,9 +61,21 @@ const FacultyDashboard = () => {
     const fetchFacultyData = async () => {
       try {
         const facultyId = localStorage.getItem('facultyId');
+        const schoolId = localStorage.getItem('schoolId');
+        
         if (facultyId) {
           const response = await axios.get(`/api/facultys/${facultyId}/`);
           setFacultyName(response.data.last_name || 'Professor');
+          
+          // If we have a school ID, fetch the school name
+          if (schoolId) {
+            try {
+              const schoolResponse = await axios.get(`/api/schools/${schoolId}/`);
+              setSchoolName(schoolResponse.data.name);
+            } catch (schoolErr) {
+              console.error('Error fetching school data:', schoolErr);
+            }
+          }
         }
       } catch (err) {
         console.error('Error fetching faculty data:', err);
@@ -121,16 +134,6 @@ const FacultyDashboard = () => {
             onClick={() => navigate('/')}
           >
             <span style={{ color: '#DEA514' }}>TrueAttend</span>
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              color: '#666',
-              display: 'block',
-              mt: 0.5
-            }}
-          >
-            Salisbury University
           </Typography>
         </Box>
       </Toolbar>
@@ -244,7 +247,7 @@ const FacultyDashboard = () => {
                 gap: 1
               }}
             >
-              Faculty Portal
+              Faculty Portal {schoolName && `- ${schoolName}`}
             </Typography>
           </Box>
           
