@@ -18,6 +18,19 @@ import {
   Alert,
   Avatar,
   ListItemAvatar,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox,
+  ListItemText as MuiListItemText,
+  OutlinedInput,
+  FormHelperText,
+  Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import EventIcon from '@mui/icons-material/Event';
@@ -33,6 +46,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import DownloadIcon from '@mui/icons-material/Download';
 import HistoryIcon from '@mui/icons-material/History';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 
 const ClassDetails = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -48,6 +62,17 @@ const ClassDetails = () => {
   const [error, setError] = useState('');
   const [attendanceLoading, setAttendanceLoading] = useState({});
   const hasLoadedRef = React.useRef(false);
+
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [availableEvents, setAvailableEvents] = useState([]);
+  const [selectedEvents, setSelectedEvents] = useState([]);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentError, setAssignmentError] = useState('');
+  const [assignmentSuccess, setAssignmentSuccess] = useState('');
+
+  const [unassignDialogOpen, setUnassignDialogOpen] = useState(false);
+  const [eventToUnassign, setEventToUnassign] = useState(null);
+  const [unassignLoading, setUnassignLoading] = useState(false);
 
   useEffect(() => {
     const fetchClassDetails = async () => {
@@ -136,6 +161,167 @@ const ClassDetails = () => {
     setTabValue(newValue);
   };
 
+  const handleOpenAssignDialog = async () => {
+    try {
+      setAssignmentLoading(true);
+      setAssignmentError('');
+
+      const schoolId = localStorage.getItem('schoolId');
+
+      const eventsResponse = await axios.get(`/api/events/?school=${schoolId}`);
+
+      if (!eventsResponse.data || !Array.isArray(eventsResponse.data)) {
+        throw new Error('Invalid events data received');
+      }
+
+      const now = new Date();
+      const futureEvents = eventsResponse.data.filter(event => {
+        const eventDate = new Date(event.date);
+        return eventDate >= now;
+      });
+
+      const assignedEventIds = new Set(events.map(event => event.id));
+
+      const unassignedEvents = futureEvents.filter(event => !assignedEventIds.has(event.id));
+
+      setAvailableEvents(unassignedEvents);
+      setSelectedEvents([]);
+      setAssignDialogOpen(true);
+    } catch (err) {
+      console.error('Error fetching available events:', err);
+      setAssignmentError('Failed to load available events');
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  const handleEventSelectionChange = (event) => {
+    setSelectedEvents(event.target.value);
+  };
+
+  const handleAssignEvents = async () => {
+    try {
+      setAssignmentLoading(true);
+      setAssignmentError('');
+
+      const assignmentPromises = selectedEvents.map(eventId =>
+        axios.post('/api/class-events/', {
+          class_instance: id,
+          event: eventId
+        })
+      );
+
+      await Promise.all(assignmentPromises);
+
+      setAssignmentSuccess('Events assigned successfully');
+      setAssignDialogOpen(false);
+
+      const eventsResponse = await axios.get(`/api/class-events/?class_instance=${id}`);
+      if (eventsResponse.data && eventsResponse.data.length > 0) {
+        const eventPromises = eventsResponse.data.map(item =>
+          axios.get(`/api/events/${item.event}/`)
+        );
+        const eventResults = await Promise.all(eventPromises);
+        setEvents(eventResults.map(res => res.data));
+      }
+    } catch (err) {
+      console.error('Error assigning events:', err);
+      setAssignmentError('Failed to assign events. Please try again.');
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  const handleOpenUnassignDialog = (event, e) => {
+    e.stopPropagation();
+    setEventToUnassign(event);
+    setUnassignDialogOpen(true);
+  };
+
+  const handleUnassignEvent = async () => {
+    if (!eventToUnassign) return;
+    
+    setUnassignLoading(true);
+    try {
+      const targetEventId = eventToUnassign.id;
+      const facultyId = localStorage.getItem('facultyId');
+      
+      // First get all class-events for this class and event
+      const response = await axios.get(`/api/class-events/`, {
+        params: {
+          class_instance: id,
+          event: targetEventId
+        }
+      });
+      
+      if (!response.data || !response.data.length) {
+        throw new Error(`No relationship found between class ${id} and event ${targetEventId}`);
+      }
+      
+      // Get the first matching record's ID
+      const relationshipId = response.data[0].id;
+      console.log(`Found relationship ID ${relationshipId} between class ${id} and event ${targetEventId}`);
+      
+      // Delete this specific relationship record 
+      await axios.delete(`/api/class-events/${relationshipId}/`);
+      console.log(`Successfully deleted class-event relationship with ID: ${relationshipId}`);
+      
+      // Update UI by removing the event from our local state
+      setEvents(prevEvents => prevEvents.filter(event => event.id !== targetEventId));
+      
+      // Close dialog
+      setUnassignDialogOpen(false);
+      setEventToUnassign(null);
+      
+    } catch (err) {
+      console.error('Error unassigning event:', err);
+      alert(`Could not unassign event: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setUnassignLoading(false);
+    }
+  };
+
+  const refreshEventsData = async () => {
+    try {
+      setLoading(true);
+      
+      // Clear current events to prevent stale data
+      setEvents([]);
+      
+      // Fetch the latest class-events relationships
+      const eventsResponse = await axios.get(`/api/class-events/?class_instance=${id}`);
+      
+      // If no events are assigned, set events to empty array and return
+      if (!eventsResponse.data || !eventsResponse.data.length) {
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+      
+      const eventIds = eventsResponse.data.map(item => item.event);
+      const uniqueEventIds = [...new Set(eventIds)]; // Remove any potential duplicates
+      
+      // Fetch each event's full details
+      const eventPromises = uniqueEventIds.map(eventId =>
+        axios.get(`/api/events/${eventId}/`).catch(err => {
+          console.error(`Error fetching event ${eventId}:`, err);
+          return { data: null }; // Return null for failed requests
+        })
+      );
+      
+      const eventResults = await Promise.all(eventPromises);
+      const validEvents = eventResults
+        .filter(res => res.data !== null)
+        .map(res => res.data);
+      setEvents(validEvents);
+    } catch (err) {
+      console.error('Error refreshing events:', err);
+      // Optionally show an error message to the user
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -197,7 +383,6 @@ const ClassDetails = () => {
   const upcomingEvents = events
     .filter(event => !isEventPast(event))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
-
   const pastEvents = events
     .filter(event => isEventPast(event))
     .sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -206,7 +391,6 @@ const ClassDetails = () => {
     e.stopPropagation();
     try {
       setAttendanceLoading(prev => ({ ...prev, [eventId]: true }));
-
       const facultyId = localStorage.getItem('facultyId');
       const attendanceResponse = await axios.get(
         `/api/attendance/event/${eventId}/class/${id}/?faculty_id=${facultyId}`
@@ -243,7 +427,6 @@ const ClassDetails = () => {
       });
 
       let csvContent = "First Name,Last Name,Student ID,Email,Attended,Timestamp,Location,Device ID\n";
-
       students.forEach(student => {
         const attendanceRecord = attendanceMap[student.id] || {
           attended: false,
@@ -261,7 +444,6 @@ const ClassDetails = () => {
             locationStr = `"${attendanceRecord.location}"`;
           }
         }
-
         const deviceId = attendanceRecord.device_id ? `"${attendanceRecord.device_id}"` : '';
 
         csvContent += `"${student.firstName}","${student.lastName}","${student.studentId}","${student.email}",` +
@@ -359,7 +541,8 @@ const ClassDetails = () => {
               }}>
                 <Button
                   variant="contained"
-                  onClick={() => navigate('/faculty/events/', { state: { classId: id } })}
+                  onClick={handleOpenAssignDialog}
+                  disabled={assignmentLoading}
                   sx={{
                     bgcolor: '#DEA514',
                     '&:hover': {
@@ -395,7 +578,6 @@ const ClassDetails = () => {
                           const eventDate = new Date(event.date);
                           const formattedDate = eventDate.toLocaleDateString();
                           const formattedStartTime = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
                           let formattedEndTime = '';
                           if (event.end_time) {
                             const endDate = new Date(event.end_time);
@@ -424,12 +606,12 @@ const ClassDetails = () => {
                                   label="Upcoming"
                                   size="small"
                                   sx={{
-                                    alignSelf: 'flex-start',
-                                    mb: 1,
                                     bgcolor: '#e8f5e9',
                                     color: '#2e7d32',
                                     fontWeight: 'medium',
                                     border: '1px solid #81c784',
+                                    alignSelf: 'flex-start',
+                                    mb: 1,
                                   }}
                                 />
                                 <Typography
@@ -492,27 +674,30 @@ const ClassDetails = () => {
                                   gap: 1,
                                   borderTop: '1px solid #eee',
                                 }}>
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Chip
-                                      size="small"
-                                      label={
-                                        event.checkin_before_minutes > 0
-                                          ? `Check-in: ${event.checkin_before_minutes} min before`
-                                          : "No early check-in"
-                                      }
-                                      sx={{
-                                        bgcolor: '#f0f0f0',
-                                        fontSize: '0.7rem',
-                                      }}
-                                    />
-                                  </Box>
-
                                   <Box sx={{
                                     display: 'flex',
-                                    justifyContent: 'flex-end',
+                                    justifyContent: 'space-between',
                                     gap: 1,
                                     mt: 1,
                                   }}>
+                                    <Tooltip title="Unassign from class">
+                                      <Button
+                                        variant="text"
+                                        size="small"
+                                        startIcon={<LinkOffIcon />}
+                                        sx={{
+                                          color: '#f44336',
+                                          fontSize: '0.75rem',
+                                          '&:hover': {
+                                            backgroundColor: 'rgba(244, 67, 54, 0.04)',
+                                          },
+                                        }}
+                                        onClick={(e) => handleOpenUnassignDialog(event, e)}
+                                      >
+                                        Unassign
+                                      </Button>
+                                    </Tooltip>
+                                    
                                     <Button
                                       variant="outlined"
                                       size="small"
@@ -560,8 +745,8 @@ const ClassDetails = () => {
                               color: 'text.secondary',
                               fontWeight: 'medium',
                               bgcolor: 'background.paper',
-                              borderRadius: 1,
                               py: 0.5,
+                              borderRadius: 1,
                             }}
                           >
                             Past Events
@@ -591,7 +776,6 @@ const ClassDetails = () => {
                           const eventDate = new Date(event.date);
                           const formattedDate = eventDate.toLocaleDateString();
                           const formattedStartTime = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
                           let formattedEndTime = '';
                           if (event.end_time) {
                             const endDate = new Date(event.end_time);
@@ -608,9 +792,9 @@ const ClassDetails = () => {
                                   flexDirection: 'column',
                                   bgcolor: '#FFFFFF',
                                   borderLeft: '4px solid #9e9e9e',
-                                  opacity: 0.85,
                                   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                                   transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                                  opacity: 0.85,
                                   '&:hover': {
                                     transform: 'translateY(-4px)',
                                     boxShadow: '0 6px 12px rgba(0,0,0,0.12)',
@@ -622,15 +806,14 @@ const ClassDetails = () => {
                                   label="Past"
                                   size="small"
                                   sx={{
-                                    alignSelf: 'flex-start',
-                                    mb: 1,
                                     bgcolor: '#f5f5f5',
                                     color: '#757575',
                                     fontWeight: 'medium',
                                     border: '1px solid #e0e0e0',
+                                    alignSelf: 'flex-start',
+                                    mb: 1,
                                   }}
                                 />
-
                                 <Typography
                                   variant="h6"
                                   sx={{
@@ -693,10 +876,28 @@ const ClassDetails = () => {
                                 }}>
                                   <Box sx={{
                                     display: 'flex',
-                                    justifyContent: 'flex-end',
+                                    justifyContent: 'space-between',
                                     gap: 1,
                                     mt: 1,
                                   }}>
+                                    <Tooltip title="Unassign from class">
+                                      <Button
+                                        variant="text"
+                                        size="small"
+                                        startIcon={<LinkOffIcon />}
+                                        sx={{
+                                          color: '#f44336',
+                                          fontSize: '0.75rem',
+                                          '&:hover': {
+                                            backgroundColor: 'rgba(244, 67, 54, 0.04)',
+                                          },
+                                        }}
+                                        onClick={(e) => handleOpenUnassignDialog(event, e)}
+                                      >
+                                        Unassign
+                                      </Button>
+                                    </Tooltip>
+                                    
                                     <Button
                                       variant="outlined"
                                       size="small"
@@ -724,27 +925,6 @@ const ClassDetails = () => {
                       </Grid>
                     </>
                   )}
-
-                  {upcomingEvents.length === 0 && pastEvents.length === 0 && (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <Typography variant="body1" color="text.secondary">
-                        No events assigned to this class yet.
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        onClick={() => navigate('/faculty/events/', { state: { classId: id } })}
-                        sx={{
-                          mt: 2,
-                          bgcolor: '#DEA514',
-                          '&:hover': {
-                            bgcolor: '#B88A10',
-                          },
-                        }}
-                      >
-                        Assign Events
-                      </Button>
-                    </Box>
-                  )}
                 </>
               ) : (
                 <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -753,7 +933,7 @@ const ClassDetails = () => {
                   </Typography>
                   <Button
                     variant="contained"
-                    onClick={() => navigate('/faculty/events/', { state: { classId: id } })}
+                    onClick={handleOpenAssignDialog}
                     sx={{
                       mt: 2,
                       bgcolor: '#DEA514',
@@ -794,11 +974,10 @@ const ClassDetails = () => {
                                   color: student.email_verified ? '#2e7d32' : '#d32f2f',
                                   fontWeight: 'medium',
                                   border: `1px solid ${student.email_verified ? 'rgba(46, 125, 50, 0.5)' : 'rgba(211, 47, 47, 0.5)'}`,
+                                  icon: student.email_verified ?
+                                    <CheckCircleOutlineIcon fontSize="small" sx={{ color: '#2e7d32' }} /> :
+                                    <HighlightOffIcon fontSize="small" sx={{ color: '#d32f2f' }} />
                                 }}
-                                icon={student.email_verified ?
-                                  <CheckCircleOutlineIcon fontSize="small" sx={{ color: '#2e7d32' }} /> :
-                                  <HighlightOffIcon fontSize="small" sx={{ color: '#d32f2f' }} />
-                                }
                               />
                             </Box>
                           }
@@ -853,6 +1032,116 @@ const ClassDetails = () => {
           )}
         </Box>
       </Paper>
+
+      <Dialog
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Assign Events to {classData?.name}</DialogTitle>
+        <DialogContent>
+          {assignmentError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {assignmentError}
+            </Alert>
+          )}
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Select one or more events to assign to this class:
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel>Select Events</InputLabel>
+            <Select
+              multiple
+              value={selectedEvents}
+              onChange={handleEventSelectionChange}
+              input={<OutlinedInput label="Select Events" />}
+              renderValue={(selected) => {
+                if (selected.length === 0) {
+                  return <em>Select events</em>;
+                }
+                return selected.map(id => {
+                  const eventItem = availableEvents.find(e => e.id === id);
+                  return eventItem ? eventItem.name : '';
+                }).join(', ');
+              }}
+              disabled={availableEvents.length === 0}
+            >
+              {availableEvents.length === 0 ? (
+                <MenuItem disabled>
+                  <em>No available events found</em>
+                </MenuItem>
+              ) : (
+                availableEvents.map((event) => {
+                  const eventDate = new Date(event.date);
+                  const formattedDate = eventDate.toLocaleDateString();
+                  return (
+                    <MenuItem key={event.id} value={event.id}>
+                      <Checkbox checked={selectedEvents.indexOf(event.id) > -1} />
+                      <MuiListItemText 
+                        primary={event.name} 
+                        secondary={`${formattedDate} - ${event.location || 'No location'}`} 
+                      />
+                    </MenuItem>
+                  );
+                })
+              )}
+            </Select>
+            {availableEvents.length === 0 && (
+              <FormHelperText>
+                No unassigned upcoming events available
+              </FormHelperText>
+            )}
+          </FormControl> 
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setAssignDialogOpen(false)} 
+            color="inherit"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAssignEvents}
+            disabled={selectedEvents.length === 0 || assignmentLoading}
+            sx={{ color: '#DEA514' }}
+          >
+            {assignmentLoading ? 'Assigning...' : 'Assign'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={unassignDialogOpen}
+        onClose={() => !unassignLoading && setUnassignDialogOpen(false)}
+        maxWidth="sm"
+      >
+        <DialogTitle>Unassign Event</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">Are you sure you want to unassign "{eventToUnassign?.name}" from this class?</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This will remove the event from this class, but won't delete the event itself.
+            Students who have already recorded attendance will keep their records.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setUnassignDialogOpen(false)} 
+            color="inherit"
+            disabled={unassignLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleUnassignEvent}
+            color="error"
+            variant="contained"
+            disabled={unassignLoading}
+          >
+            {unassignLoading ? 'Unassigning...' : 'Unassign Event'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

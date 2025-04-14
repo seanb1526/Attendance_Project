@@ -63,6 +63,7 @@ const EventsList = () => {
       try {
         // Get school ID from localStorage
         const schoolId = localStorage.getItem('schoolId');
+        const facultyId = localStorage.getItem('facultyId');
         
         if (!schoolId) {
           throw new Error('School ID not found. You may need to log in again.');
@@ -78,8 +79,8 @@ const EventsList = () => {
         
         setAllEvents(sortedEvents);
         
-        // Fetch classes for this school
-        const classesResponse = await axios.get(`/api/classes/?school=${schoolId}`);
+        // Fetch classes for this school AND faculty
+        const classesResponse = await axios.get(`/api/classes/?school=${schoolId}&faculty=${facultyId}`);
         setClasses(classesResponse.data);
         setError(null);
       } catch (err) {
