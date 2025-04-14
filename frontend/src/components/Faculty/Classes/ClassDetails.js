@@ -969,14 +969,15 @@ const ClassDetails = () => {
                               <Chip
                                 label={student.email_verified ? "Registered" : "Not Registered"}
                                 size="small"
+                                icon={student.email_verified ? 
+                                  <CheckCircleOutlineIcon fontSize="small" style={{ color: '#2e7d32' }} /> : 
+                                  <HighlightOffIcon fontSize="small" style={{ color: '#d32f2f' }} />
+                                }
                                 sx={{
                                   bgcolor: student.email_verified ? 'rgba(46, 125, 50, 0.1)' : 'rgba(211, 47, 47, 0.1)',
                                   color: student.email_verified ? '#2e7d32' : '#d32f2f',
                                   fontWeight: 'medium',
-                                  border: `1px solid ${student.email_verified ? 'rgba(46, 125, 50, 0.5)' : 'rgba(211, 47, 47, 0.5)'}`,
-                                  icon: student.email_verified ?
-                                    <CheckCircleOutlineIcon fontSize="small" sx={{ color: '#2e7d32' }} /> :
-                                    <HighlightOffIcon fontSize="small" sx={{ color: '#d32f2f' }} />
+                                  border: `1px solid ${student.email_verified ? 'rgba(46, 125, 50, 0.5)' : 'rgba(211, 47, 47, 0.5)'}`
                                 }}
                               />
                             </Box>
@@ -1092,7 +1093,7 @@ const ClassDetails = () => {
                 No unassigned upcoming events available
               </FormHelperText>
             )}
-          </FormControl> 
+          </FormControl>  
         </DialogContent>
         <DialogActions>
           <Button 
@@ -1147,3 +1148,4 @@ const ClassDetails = () => {
 };
 
 export default ClassDetails;
+
