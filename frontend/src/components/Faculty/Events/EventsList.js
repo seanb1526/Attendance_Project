@@ -33,8 +33,10 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
 import HistoryIcon from '@mui/icons-material/History';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
+import { getApiUrl } from '../../../utils/urlHelper';
 
 const EventsList = () => {
   const theme = useTheme();
@@ -58,8 +60,15 @@ const EventsList = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch events
-        const eventsResponse = await axios.get('/api/events/');
+        // Get school ID from localStorage
+        const schoolId = localStorage.getItem('schoolId');
+        
+        if (!schoolId) {
+          throw new Error('School ID not found. You may need to log in again.');
+        }
+        
+        // Fetch events with school filter
+        const eventsResponse = await axios.get(`/api/events/?school=${schoolId}`);
         
         // Sort events by date (nearest first)
         const sortedEvents = [...eventsResponse.data].sort((a, b) => {
@@ -68,13 +77,17 @@ const EventsList = () => {
         
         setAllEvents(sortedEvents);
         
-        // Fetch classes
-        const classesResponse = await axios.get('/api/classes/');
+        // Fetch classes for this school
+        const classesResponse = await axios.get(`/api/classes/?school=${schoolId}`);
         setClasses(classesResponse.data);
         setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Failed to load data. Please try again.');
+        if (err.message && err.message.includes('School ID not found')) {
+          setError('School information not available. Please log out and log in again.');
+        } else {
+          setError('Failed to load data. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
@@ -90,11 +103,23 @@ const EventsList = () => {
     // Set time to beginning of the day to include same-day events
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
+    // Get school ID from localStorage to ensure we're always filtering by school
+    const schoolId = localStorage.getItem('schoolId');
+    
+    // First filter by school ID to ensure we only show events from this school
     let filteredEvents = allEvents;
     
-    // Filter out past events unless showPastEvents is true
+    // Check data type and format for comparison
+    if (schoolId) {
+      // Use string comparison to handle potential type differences
+      filteredEvents = allEvents.filter(event => 
+        String(event.school) === String(schoolId)
+      );
+    }
+    
+    // Then filter by date if not showing past events
     if (!showPastEvents) {
-      filteredEvents = allEvents.filter(event => {
+      filteredEvents = filteredEvents.filter(event => {
         const eventDate = new Date(event.date);
         // Keep events from today or future days
         return eventDate >= today;
@@ -138,8 +163,11 @@ const EventsList = () => {
       // Wait for all assignments to complete
       await Promise.all(assignmentPromises);
       
+      // Get school ID for refreshing events
+      const schoolId = localStorage.getItem('schoolId');
+      
       // Refresh the events list to show updated assignments
-      const response = await axios.get('/api/events/');
+      const response = await axios.get(`/api/events/?school=${schoolId}`);
       
       // Sort events by date (nearest first)
       const sortedEvents = [...response.data].sort((a, b) => {
@@ -196,8 +224,8 @@ const EventsList = () => {
   };
 
   const handleDownloadQrCode = (eventId) => {
-    // Use the full backend URL
-    window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
+    // Use the dynamic API URL helper instead of hardcoded URL
+    window.open(getApiUrl(`/api/event/${eventId}/qr/`), '_blank');
   };
 
   return (
@@ -332,6 +360,7 @@ const EventsList = () => {
             <Grid container spacing={3}>
               {events.map((event) => {
                 const { date, time } = formatDateTime(event.date);
+                const endTime = event.end_time ? formatDateTime(event.end_time).time : null;
                 const eventDate = new Date(event.date);
                 const isPast = isEventPast(event.date);
                 const isToday = isEventToday(event.date);
@@ -373,7 +402,13 @@ const EventsList = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <CalendarTodayIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
                           <Typography variant="body2" color="text.secondary">
-                            {date} at {time}
+                            {date}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <AccessTimeIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {time}{endTime ? ` - ${endTime}` : ''}
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>

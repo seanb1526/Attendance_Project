@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -12,6 +12,7 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
+  MenuItem,
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -23,13 +24,20 @@ const EditClass = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   
+  // Get current year for semester options - moved outside of render cycle
+  const currentYear = new Date().getFullYear();
+  // Create semester options using useMemo to prevent recreation on each render
+  const semesterOptions = useMemo(() => [
+    `Spring ${currentYear}`,
+    `Summer ${currentYear}`,
+    `Fall ${currentYear}`,
+    `Winter ${currentYear}`
+  ], [currentYear]);
+  
   // Class state
   const [classData, setClassData] = useState({
     name: '',
-    code: '',
-    section: '',
     semester: '',
-    description: '',
   });
 
   // Students state
@@ -53,30 +61,10 @@ const EditClass = () => {
         // Fetch the class data
         const classResponse = await axios.get(`/api/classes/${id}/`);
         
-        // Parse metadata if available
-        let metadata = {
-          code: '',
-          section: '',
-          semester: 'Current Semester',
-          description: ''
-        };
-        
-        try {
-          if (classResponse.data.description) {
-            const parsedMetadata = JSON.parse(classResponse.data.description);
-            metadata = { ...metadata, ...parsedMetadata };
-          }
-        } catch (e) {
-          console.error('Error parsing class metadata:', e);
-        }
-        
-        // Set class data
+        // Set class data - use semester directly from the response
         setClassData({
           name: classResponse.data.name,
-          code: metadata.code || '',
-          section: metadata.section || '',
-          semester: metadata.semester || 'Current Semester',
-          description: metadata.description || ''
+          semester: classResponse.data.semester || semesterOptions[0], // Get semester directly from API response
         });
         
         // Fetch students enrolled in this class
@@ -110,7 +98,7 @@ const EditClass = () => {
     };
     
     fetchClassDetails();
-  }, [id]);
+  }, [id]); // Removed semesterOptions from dependency array since it's now memoized
 
   const handleClassDataChange = (field) => (event) => {
     setClassData({
@@ -161,14 +149,6 @@ const EditClass = () => {
         return;
       }
       
-      // Prepare class metadata (for fields not in the model)
-      const metadata = {
-        code: classData.code,
-        section: classData.section,
-        semester: classData.semester,
-        description: classData.description
-      };
-      
       // Register/lookup new students
       const schoolId = localStorage.getItem('schoolId');
       const studentIds = [];
@@ -212,14 +192,17 @@ const EditClass = () => {
         }
       }
       
-      // Prepare the payload
+      // Prepare the payload - include semester field directly
       const payload = {
         name: classData.name,
-        description: JSON.stringify(metadata),
+        description: JSON.stringify({}), // Empty metadata since we removed those fields
         faculty: facultyId,
         school: schoolId,
-        students: studentIds
+        students: studentIds,
+        semester: classData.semester // Include semester directly in the payload
       };
+      
+      console.log("Updating class with payload:", payload); // Debug log to verify semester is included
       
       // Update the class
       const classResponse = await axios.put(`/api/class/${id}/update/`, payload);
@@ -309,50 +292,22 @@ const EditClass = () => {
             />
           </Grid>
           
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Class Code"
-              variant="outlined"
-              value={classData.code}
-              onChange={handleClassDataChange('code')}
-              sx={{ mb: 2 }}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Section"
-              variant="outlined"
-              value={classData.section}
-              onChange={handleClassDataChange('section')}
-              sx={{ mb: 2 }}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Semester"
-              variant="outlined"
-              value={classData.semester}
-              onChange={handleClassDataChange('semester')}
-              sx={{ mb: 2 }}
-            />
-          </Grid>
-          
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Description (Optional)"
+              select
+              label="Semester"
               variant="outlined"
-              value={classData.description}
-              onChange={handleClassDataChange('description')}
-              multiline
-              rows={3}
+              value={classData.semester || semesterOptions[0]}
+              onChange={handleClassDataChange('semester')}
               sx={{ mb: 2 }}
-            />
+            >
+              {semesterOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
         </Grid>
       </Paper>
@@ -549,4 +504,4 @@ const EditClass = () => {
   );
 };
 
-export default EditClass; 
+export default EditClass;

@@ -16,20 +16,21 @@ import {
   useMediaQuery,
   CircularProgress,
   Alert,
+  Avatar,
+  ListItemAvatar,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import EventIcon from '@mui/icons-material/Event';
 import PeopleIcon from '@mui/icons-material/People';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
+import { getApiUrl } from '../../../utils/urlHelper';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-import Avatar from '@mui/material/Avatar';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
 import DownloadIcon from '@mui/icons-material/Download';
 
 const ClassDetails = () => {
@@ -44,11 +45,16 @@ const ClassDetails = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedClasses, setSelectedClasses] = useState([]);
   const [attendanceLoading, setAttendanceLoading] = useState({});
+  // Add a ref to prevent double fetching on mount
+  const hasLoadedRef = React.useRef(false);
 
   useEffect(() => {
     const fetchClassDetails = async () => {
+      // Prevent duplicate fetches on strict mode double mounting
+      if (hasLoadedRef.current) return;
+      hasLoadedRef.current = true;
+      
       try {
         setLoading(true);
         
@@ -201,8 +207,8 @@ const ClassDetails = () => {
   }
 
   const handleDownloadQrCode = (eventId) => {
-    // Use the full backend URL
-    window.open(`http://localhost:8000/api/event/${eventId}/qr/`, '_blank');
+    // Use the dynamic API URL helper instead of hardcoded URL
+    window.open(getApiUrl(`/api/event/${eventId}/qr/`), '_blank');
   };
 
   const handleDownloadAttendanceReport = async (eventId, eventName, e) => {
@@ -265,15 +271,12 @@ const ClassDetails = () => {
             <Typography variant="h4" sx={{ color: '#2C2C2C', fontWeight: 'bold' }}>
               {classData.name}
             </Typography>
-            {classData.code && (
+            {/* Display semester as text instead of dropdown */}
+            {classData.semester && (
               <Typography variant="subtitle1" sx={{ color: '#666', mt: 1 }}>
-                {classData.code}{classData.section ? ` - Section ${classData.section}` : ''}
+                {classData.semester}
               </Typography>
             )}
-            <Chip 
-              label={classData.semester} 
-              sx={{ mt: 1, bgcolor: '#DEA514', color: 'white' }}
-            />
           </Box>
           <Button
             variant="outlined"
@@ -291,17 +294,6 @@ const ClassDetails = () => {
             Edit Class
           </Button>
         </Box>
-        
-        {classData.fullDescription && (
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              Description
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#666' }}>
-              {classData.fullDescription}
-            </Typography>
-          </Box>
-        )}
       </Paper>
 
       <Paper sx={{ 
@@ -352,7 +344,14 @@ const ClassDetails = () => {
                     // Format date and time for display
                     const eventDate = new Date(event.date);
                     const formattedDate = eventDate.toLocaleDateString();
-                    const formattedTime = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const formattedStartTime = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    // Format end time if available
+                    let formattedEndTime = '';
+                    if (event.end_time) {
+                      const endDate = new Date(event.end_time);
+                      formattedEndTime = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
                     
                     return (
                       <Grid item xs={12} sm={6} md={4} key={event.id}>
@@ -394,7 +393,7 @@ const ClassDetails = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                             <AccessTimeIcon sx={{ fontSize: 18, mr: 1, color: '#666' }} />
                             <Typography variant="body2" color="text.secondary">
-                              {formattedTime}
+                              {formattedStartTime}{formattedEndTime ? ` - ${formattedEndTime}` : ''}
                             </Typography>
                           </Box>
                           

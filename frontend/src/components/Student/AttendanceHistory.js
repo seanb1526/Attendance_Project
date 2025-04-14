@@ -56,6 +56,18 @@ const AttendanceHistory = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  // Helper function to format event time range
+  const formatTimeRange = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const startTime = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    if (!endDate) return startTime;
+    
+    const end = new Date(endDate);
+    const endTime = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${startTime} - ${endTime}`;
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
@@ -124,7 +136,7 @@ const AttendanceHistory = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <AccessTimeIcon sx={{ fontSize: 16, mr: 1, color: '#666' }} />
                   <Typography variant="body2" color="text.secondary">
-                    Check-in time: {formatDate(record.scanned_at)}
+                    Check-in time: {formatTimeRange(record.scanned_at, record.event_end_time)}
                   </Typography>
                 </Box>
               </ListItem>

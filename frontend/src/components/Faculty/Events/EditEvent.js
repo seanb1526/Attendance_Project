@@ -44,7 +44,8 @@ const EditEvent = () => {
     name: '',
     description: '',
     date: '',
-    time: '',
+    time: '', // Keep for backwards compatibility
+    endTime: '', // Add end time field
     location: '',
     checkin_before_minutes: 15,
     checkin_after_minutes: 15,
@@ -78,15 +79,23 @@ const EditEvent = () => {
         const formattedDate = eventDate.toISOString().split('T')[0];
         const formattedTime = eventDate.toTimeString().slice(0, 5);
 
+        // Format end time if available
+        let formattedEndTime = '';
+        if (event.end_time) {
+          const endDate = new Date(event.end_time);
+          formattedEndTime = endDate.toTimeString().slice(0, 5);
+        }
+
         setEventData({
           name: event.name || '',
           description: event.description || '',
           date: formattedDate,
           time: formattedTime,
+          endTime: formattedEndTime,
           location: event.location || '',
           checkin_before_minutes: event.checkin_before_minutes || 15,
           checkin_after_minutes: event.checkin_after_minutes || 15,
-          faculty: localStorage.getItem('facultyId') ,
+          faculty: localStorage.getItem('facultyId'),
         });
 
         setLoading(false);
@@ -116,7 +125,13 @@ const EditEvent = () => {
     try {
       // Format the date and time for the API
       const dateTime = new Date(`${eventData.date}T${eventData.time}`).toISOString();
-      
+
+      // Format end time if provided
+      let endDateTime = null;
+      if (eventData.endTime && eventData.endTime.trim() !== '') {
+        endDateTime = new Date(`${eventData.date}T${eventData.endTime}`).toISOString();
+      }
+
       // Get faculty ID and school ID from local storage
       const facultyId = localStorage.getItem('facultyId');
       const schoolId = localStorage.getItem('schoolId');
@@ -125,12 +140,15 @@ const EditEvent = () => {
         name: eventData.name,
         description: eventData.description,
         date: dateTime,
+        end_time: endDateTime, // Make sure we're sending this even if null
         location: eventData.location,
         faculty: facultyId,
         school: schoolId,
         checkin_before_minutes: eventData.checkin_before_minutes,
         checkin_after_minutes: eventData.checkin_after_minutes,
       };
+
+      console.log('Updating event with payload:', eventPayload); // Debug log
 
       // Make the API request to update the event
       await axios.put(`/api/events/${id}/?faculty_id=${facultyId}`, eventPayload);
@@ -151,12 +169,12 @@ const EditEvent = () => {
   const handleDelete = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Delete the event
       const facultyId = localStorage.getItem('facultyId');
       await axios.delete(`/api/events/${id}/?faculty_id=${facultyId}`);
-      
+
       setSuccess('Event deleted successfully');
       // Redirect after deletion
       setTimeout(() => {
@@ -173,15 +191,11 @@ const EditEvent = () => {
 
   if (unauthorized) {
     return (
-      <Alert 
-        severity="error" 
+      <Alert
+        severity="error"
         sx={{ mt: 4 }}
         action={
-          <Button 
-            color="inherit" 
-            size="small" 
-            onClick={() => navigate('/faculty/events')}
-          >
+          <Button color="inherit" size="small" onClick={() => navigate('/faculty/events')}>
             Back to Events
           </Button>
         }
@@ -201,25 +215,25 @@ const EditEvent = () => {
 
   return (
     <Box>
-      <Typography 
-        variant="h4" 
-        sx={{ 
+      <Typography
+        variant="h4"
+        sx={{
           mb: 4,
           color: '#2C2C2C',
-          fontWeight: 'bold'
+          fontWeight: 'bold',
         }}
       >
         Edit Event
       </Typography>
 
-      <Paper 
-        component="form" 
+      <Paper
+        component="form"
         onSubmit={handleSubmit}
-        sx={{ 
+        sx={{
           p: 4,
           maxWidth: 800,
           mx: 'auto',
-          bgcolor: '#FFFFFF'
+          bgcolor: '#FFFFFF',
         }}
       >
         <Grid container spacing={3}>
@@ -233,7 +247,7 @@ const EditEvent = () => {
               placeholder="e.g., Guest Speaker: AI Ethics"
             />
           </Grid>
-          
+
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -245,7 +259,7 @@ const EditEvent = () => {
               placeholder="Provide details about the event"
             />
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
@@ -257,8 +271,8 @@ const EditEvent = () => {
               onChange={handleChange('date')}
             />
           </Grid>
-          
-          <Grid item xs={12} sm={6}>
+
+          <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
               label="Time"
@@ -267,6 +281,17 @@ const EditEvent = () => {
               InputLabelProps={{ shrink: true }}
               value={eventData.time}
               onChange={handleChange('time')}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={3}>
+            <TextField
+              fullWidth
+              label="End Time"
+              type="time"
+              InputLabelProps={{ shrink: true }}
+              value={eventData.endTime}
+              onChange={handleChange('endTime')}
             />
           </Grid>
 
@@ -280,14 +305,14 @@ const EditEvent = () => {
               placeholder="e.g., Lecture Hall A"
             />
           </Grid>
-          
+
           {/* Check-in time window options */}
           <Grid item xs={12}>
             <Typography variant="h6" sx={{ mt: 2, mb: 2, fontSize: '1rem' }}>
               Attendance Check-in Window
             </Typography>
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Allow Check-in Before</InputLabel>
@@ -307,7 +332,7 @@ const EditEvent = () => {
               </FormHelperText>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Allow Check-in After</InputLabel>
@@ -329,13 +354,15 @@ const EditEvent = () => {
           </Grid>
 
           <Grid item xs={12}>
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2,
-              flexDirection: isMobile ? 'column' : 'row',
-              justifyContent: 'space-between', 
-              mt: 2 
-            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                mt: 2,
+              }}
+            >
               <Button
                 variant="contained"
                 color="error"
@@ -348,11 +375,13 @@ const EditEvent = () => {
                 Delete Event
               </Button>
 
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 2,
-                flexDirection: isMobile ? 'column' : 'row',
-              }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 2,
+                  flexDirection: isMobile ? 'column' : 'row',
+                }}
+              >
                 <Button
                   variant="outlined"
                   onClick={() => navigate('/faculty/events')}
@@ -370,7 +399,7 @@ const EditEvent = () => {
                     bgcolor: '#DEA514',
                     '&:hover': {
                       bgcolor: '#B88A10',
-                    }
+                    },
                   }}
                 >
                   {loading ? 'Updating...' : 'Update Event'}
@@ -380,12 +409,9 @@ const EditEvent = () => {
           </Grid>
         </Grid>
       </Paper>
-      
+
       {/* Confirmation Dialog for Delete */}
-      <Dialog
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-      >
+      <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
         <DialogTitle>Delete Event?</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -403,15 +429,21 @@ const EditEvent = () => {
       </Dialog>
 
       {/* Snackbar for success/error messages */}
-      <Snackbar 
-        open={!!error || !!success} 
-        autoHideDuration={6000} 
-        onClose={() => {setError(null); setSuccess(null)}}
+      <Snackbar
+        open={!!error || !!success}
+        autoHideDuration={6000}
+        onClose={() => {
+          setError(null);
+          setSuccess(null);
+        }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={() => {setError(null); setSuccess(null)}} 
-          severity={error ? "error" : "success"} 
+        <Alert
+          onClose={() => {
+            setError(null);
+            setSuccess(null);
+          }}
+          severity={error ? 'error' : 'success'}
           sx={{ width: '100%' }}
         >
           {error || success}
@@ -421,4 +453,4 @@ const EditEvent = () => {
   );
 };
 
-export default EditEvent; 
+export default EditEvent;

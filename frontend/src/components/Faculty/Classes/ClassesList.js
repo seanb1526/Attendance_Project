@@ -39,33 +39,24 @@ const ClassesList = () => {
         // Fetch classes where faculty ID matches
         const response = await axios.get(`/api/classes/?faculty=${facultyId}`);
         
+        // Check if we got valid data back
+        if (!Array.isArray(response.data)) {
+          console.error('Unexpected API response format:', response.data);
+          setError('Received invalid data from server.');
+          setLoading(false);
+          return;
+        }
+        
         // Transform the data to match our UI needs
         const classesWithDetails = response.data.map(classItem => {
-          // Try to parse metadata from description field if it exists
-          let code = '';
-          let section = '';
-          let semester = 'Current Semester'; // Default semester if none provided
-          let description = '';
-          
-          try {
-            if (classItem.description) {
-              const metadata = JSON.parse(classItem.description);
-              code = metadata.code || '';
-              section = metadata.section || '';
-              semester = metadata.semester || 'Current Semester';
-              description = metadata.description || '';
-            }
-          } catch (e) {
-            console.error('Error parsing class metadata:', e);
-          }
+          // Use the semester directly from the API, with fallback to current year
+          const currentYear = new Date().getFullYear();
+          const defaultSemester = `Spring ${currentYear}`;
           
           return {
             id: classItem.id,
             name: classItem.name,
-            code,
-            section,
-            semester,
-            description,
+            semester: classItem.semester || defaultSemester,
             students: Array.isArray(classItem.students) ? classItem.students.length : 0
           };
         });
@@ -177,19 +168,6 @@ const ClassesList = () => {
                     }}
                   >
                     {classItem.name}
-                  </Typography>
-                  <Typography 
-                    variant="subtitle2" 
-                    sx={{ 
-                      color: '#666',
-                      mb: 2
-                    }}
-                  >
-                    {classItem.code ? (
-                      classItem.section ? 
-                        `${classItem.code} - Section ${classItem.section}` : 
-                        classItem.code
-                    ) : ''}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                     <Chip 

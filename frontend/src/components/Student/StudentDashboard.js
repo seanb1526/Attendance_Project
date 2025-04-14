@@ -385,8 +385,21 @@ const StudentDashboard = () => {
                     <Typography variant="h6" color="primary">{eventDetails.name}</Typography>
                     <Typography variant="body1" sx={{ mt: 1 }}>{eventDetails.location || 'No location specified'}</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      {new Date(eventDetails.date).toLocaleString()}
+                      {new Date(eventDetails.date).toLocaleDateString()}, {new Date(eventDetails.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {eventDetails.end_time && (
+                        <> - {new Date(eventDetails.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
+                      )}
                     </Typography>
+                    
+                    {/* Show check-in window information */}
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Check-in window: {eventDetails.checkin_before_minutes > 0 ? 
+                        `${eventDetails.checkin_before_minutes} min before` : 
+                        'Starts at event time'} to {eventDetails.checkin_after_minutes > 0 ? 
+                        `${eventDetails.checkin_after_minutes} min after start` : 
+                        'event start time only'}
+                    </Typography>
+                    
                     <Box sx={{ display: 'flex', gap: 2, mt: 3, flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}>
                       <Button variant="contained" onClick={() => setConfirmOpen(true)} disabled={loading} fullWidth color="primary">
                         Confirm Attendance

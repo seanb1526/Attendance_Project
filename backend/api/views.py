@@ -249,6 +249,48 @@ class EventViewSet(viewsets.ModelViewSet):
 class ClassViewSet(viewsets.ModelViewSet):
     queryset = Class.objects.all()
     serializer_class = ClassSerializer
+    
+    def get_queryset(self):
+        """
+        This view should return a list of all classes
+        for the currently authenticated faculty.
+        """
+        queryset = Class.objects.all()
+        
+        # Get faculty_id from query parameters
+        faculty_id = self.request.query_params.get('faculty', None)
+        
+        # Filter by faculty ID if provided
+        if faculty_id is not None:
+            queryset = queryset.filter(faculty=faculty_id)
+            
+        return queryset
+    
+    def perform_create(self, serializer):
+        serializer.save()
+    
+    def perform_update(self, serializer):
+        # Ensure only the creator can update
+        class_instance = self.get_object()
+        faculty_id = self.request.query_params.get('faculty_id')
+        if not faculty_id:
+            faculty_id = self.request.data.get('faculty')
+            
+        if str(class_instance.faculty.id) != str(faculty_id):
+            raise PermissionDenied("You don't have permission to edit this class")
+        
+        serializer.save()
+    
+    def perform_destroy(self, instance):
+        # Ensure only the creator can delete
+        faculty_id = self.request.query_params.get('faculty_id')
+        if not faculty_id:
+            faculty_id = self.request.data.get('faculty')
+            
+        if str(instance.faculty.id) != str(faculty_id):
+            raise PermissionDenied("You don't have permission to delete this class")
+        
+        instance.delete()
 
 # ---------------- Attendance ViewSet ----------------
 class AttendanceViewSet(viewsets.ModelViewSet):
@@ -368,7 +410,8 @@ def create_class(request):
         class_data = {
             'name': request.data.get('name'),
             'faculty': faculty.id,
-            'school': faculty.school.id
+            'school': faculty.school.id,
+            'semester': request.data.get('semester')  # Add semester field
         }
         
         serializer = ClassSerializer(data=class_data)
@@ -432,6 +475,10 @@ def update_class(request, pk):
         # Update basic class information
         class_instance.name = request.data.get('name', class_instance.name)
         
+        # Update semester field directly
+        if 'semester' in request.data:
+            class_instance.semester = request.data['semester']
+            
         # Update description/metadata
         if 'description' in request.data:
             class_instance.description = request.data['description']
@@ -488,8 +535,8 @@ def generate_event_qr(request, event_id):
         event = Event.objects.get(pk=event_uuid)
         
         # Create event attendance URL - this will be the data in the QR code
-        # We'll use a format like: /attend/{event_id}
-        attendance_url = f"{settings.FRONTEND_URL}/attend/{event_id}"
+        # Use the hosted domain instead of relying on settings
+        attendance_url = f"https://trueattend.onrender.com/attend/{event_id}"
         
         # Generate QR code
         qr = qrcode.QRCode(
@@ -517,16 +564,21 @@ def generate_event_qr(request, event_id):
         pdf.drawString(1*inch, 10*inch, f"Event: {event.name}")
         pdf.setFont("Helvetica", 12)
         
-        # Handle date formatting based on available fields
-        if hasattr(event, 'start_time') and event.start_time:
-            pdf.drawString(1*inch, 9.5*inch, f"Date: {event.start_time.strftime('%B %d, %Y')}")
-            pdf.drawString(1*inch, 9.0*inch, f"Time: {event.start_time.strftime('%I:%M %p')} - {event.end_time.strftime('%I:%M %p')}")
-        elif hasattr(event, 'date') and event.date:
-            # If you're using a 'date' field instead of start_time/end_time
-            pdf.drawString(1*inch, 9.5*inch, f"Date: {event.date.strftime('%B %d, %Y')}")
+        # Format and display date and time
+        event_date = event.date.strftime('%B %d, %Y')
+        start_time = event.date.strftime('%I:%M %p')
+        
+        pdf.drawString(1*inch, 9.5*inch, f"Date: {event_date}")
+        
+        # If end time exists, display start time and end time, otherwise just start time
+        if event.end_time:
+            end_time = event.end_time.strftime('%I:%M %p')
+            pdf.drawString(1*inch, 9.0*inch, f"Time: {start_time} - {end_time}")
+        else:
+            pdf.drawString(1*inch, 9.0*inch, f"Time: {start_time}")
         
         # Add location if available
-        if hasattr(event, 'location') and event.location:
+        if event.location:
             pdf.drawString(1*inch, 8.5*inch, f"Location: {event.location}")
         
         # Add instructions
@@ -718,6 +770,7 @@ def get_student_attendance(request, student_id):
                 'event_id': str(event.id),
                 'event_name': event.name,
                 'event_date': event.date,
+                'event_end_time': event.end_time,  # Include the end_time field here
                 'event_location': event.location or 'No location specified',
                 'scanned_at': record.scanned_at,
             })
