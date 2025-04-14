@@ -9,6 +9,7 @@ import {
   MenuItem,
   Alert,
   Container,
+  CircularProgress,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../utils/axios';
@@ -24,6 +25,7 @@ const FacultyRegister = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Fetch schools list
@@ -36,6 +38,7 @@ const FacultyRegister = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
     
     try {
       const response = await axios.post('/api/faculty/register/', {
@@ -52,9 +55,11 @@ const FacultyRegister = () => {
         email: '',
         school: '',
       });
+      setLoading(false); // Reset loading state on success
     } catch (error) {
       console.error('Registration error:', error.response?.data || error);
       setError(error.response?.data?.email?.[0] || 'Registration failed. Please try again.');
+      setLoading(false);
     }
   };
 
@@ -77,6 +82,7 @@ const FacultyRegister = () => {
                 label="First Name"
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                disabled={loading || !!success}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -86,6 +92,7 @@ const FacultyRegister = () => {
                 label="Last Name"
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                disabled={loading || !!success}
               />
             </Grid>
             <Grid item xs={12}>
@@ -97,6 +104,7 @@ const FacultyRegister = () => {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 helperText="Use your faculty email address"
+                disabled={loading || !!success}
               />
             </Grid>
             <Grid item xs={12}>
@@ -107,6 +115,7 @@ const FacultyRegister = () => {
                 label="School"
                 value={formData.school}
                 onChange={(e) => setFormData({ ...formData, school: e.target.value })}
+                disabled={loading || !!success}
               >
                 {schools.map((school) => (
                   <MenuItem key={school.id} value={school.id}>
@@ -121,9 +130,23 @@ const FacultyRegister = () => {
                 fullWidth
                 variant="contained"
                 size="large"
-                sx={{ mt: 2 }}
+                sx={{ 
+                  mt: 2,
+                  height: '48px',
+                  bgcolor: success ? '#4caf50' : '#DEA514',
+                  '&:hover': {
+                    bgcolor: success ? '#388e3c' : '#B88A10',
+                  }
+                }}
+                disabled={loading || !!success}
               >
-                Register
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : success ? (
+                  'Registration Complete'
+                ) : (
+                  'Register'
+                )}
               </Button>
             </Grid>
           </Grid>
@@ -133,4 +156,4 @@ const FacultyRegister = () => {
   );
 };
 
-export default FacultyRegister; 
+export default FacultyRegister;
