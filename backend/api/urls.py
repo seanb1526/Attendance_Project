@@ -11,6 +11,7 @@ router.register(r'events', views.EventViewSet)
 router.register(r'classes', views.ClassViewSet)
 router.register(r'attendance', views.AttendanceViewSet)
 router.register(r'class-events', views.ClassEventViewSet)
+router.register(r'class-students', views.ClassStudentViewSet)  # Add this line
 router.register(r'pending-students', views.PendingStudentViewSet)
 
 # Simple database connection test endpoint

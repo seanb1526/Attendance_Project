@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent, PendingStudent
-from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer, StudentSerializer, PendingStudentSerializer
+from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer, StudentSerializer, PendingStudentSerializer, ClassStudentSerializer
 from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
@@ -43,6 +43,23 @@ class PendingStudentViewSet(viewsets.ModelViewSet):
         
         if school_id:
             queryset = queryset.filter(school=school_id)
+            
+        return queryset
+
+# ---------------- Class Student ViewSet ----------------
+class ClassStudentViewSet(viewsets.ModelViewSet):
+    queryset = ClassStudent.objects.all()
+    serializer_class = ClassStudentSerializer
+
+    def get_queryset(self):
+        queryset = ClassStudent.objects.all()
+        class_instance = self.request.query_params.get('class_instance', None)
+        
+        if class_instance is not None:
+            queryset = queryset.filter(class_instance=class_instance)
+            
+        # For debugging - check what we're returning
+        print(f"ClassStudentViewSet query for class_instance {class_instance}: Found {queryset.count()} records")
             
         return queryset
 

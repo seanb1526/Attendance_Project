@@ -102,42 +102,69 @@ const ClassDetails = () => {
         }
 
         try {
-          if (classResponse.data.students && Array.isArray(classResponse.data.students)) {
-            const studentPromises = classResponse.data.students.map(studentId =>
-              axios.get(`/api/students/${studentId}/`)
-            );
-            const studentResults = await Promise.all(studentPromises);
-            setStudents(studentResults.map(res => ({
-              id: res.data.id,
-              firstName: res.data.first_name,
-              lastName: res.data.last_name,
-              studentId: res.data.student_id,
-              email: res.data.email,
-              email_verified: res.data.email_verified,
-            })));
-          } else {
-            try {
-              const studentsResponse = await axios.get(`/api/class-students/?class=${id}`);
-              if (studentsResponse.data && studentsResponse.data.length > 0) {
-                const studentPromises = studentsResponse.data.map(item =>
-                  axios.get(`/api/students/${item.student}/`)
-                );
-                const studentResults = await Promise.all(studentPromises);
-                setStudents(studentResults.map(res => ({
-                  id: res.data.id,
-                  firstName: res.data.first_name,
-                  lastName: res.data.last_name,
-                  studentId: res.data.student_id,
-                  email: res.data.email,
-                  email_verified: res.data.email_verified,
-                })));
-              } else {
-                setStudents([]);
+          // Get all class-student relationships for this class
+          const classStudentsResponse = await axios.get(`/api/class-students/?class_instance=${id}`);
+          
+          if (classStudentsResponse.data && Array.isArray(classStudentsResponse.data) && classStudentsResponse.data.length > 0) {
+            console.log("ClassStudent data:", classStudentsResponse.data); // Debug data structure
+            
+            const studentPromises = classStudentsResponse.data.map(relation => {
+              // The relation might have different structure than expected
+              // Let's check what fields are available in the response
+              console.log("ClassStudent relation:", relation);
+              
+              if (relation.student) {
+                // This is a registered student
+                return axios.get(`/api/students/${relation.student}/`)
+                  .then(res => ({
+                    id: res.data.id,
+                    firstName: res.data.first_name,
+                    lastName: res.data.last_name,
+                    studentId: res.data.student_id,
+                    email: res.data.email,
+                    email_verified: true,
+                  }))
+                  .catch(err => {
+                    console.error(`Error fetching registered student ${relation.student}:`, err);
+                    return null;
+                  });
+              } else if (relation.pending_student) {
+                // This is a pending/non-registered student
+                return axios.get(`/api/pending-students/${relation.pending_student}/`)
+                  .then(res => ({
+                    id: res.data.id,
+                    firstName: res.data.first_name,
+                    lastName: res.data.last_name,
+                    studentId: res.data.student_id,
+                    email: res.data.email,
+                    email_verified: false,
+                  }))
+                  .catch(err => {
+                    console.error(`Error fetching pending student ${relation.pending_student}:`, err);
+                    return null;
+                  });
+              } else if (relation.student_info) {
+                // Alternative: If the API returns nested student info directly
+                const info = relation.student_info;
+                return Promise.resolve({
+                  id: info.id,
+                  firstName: info.first_name,
+                  lastName: info.last_name,
+                  studentId: info.student_id,
+                  email: info.email,
+                  email_verified: info.registered || false,
+                });
               }
-            } catch (classStudentsErr) {
-              console.error('Error fetching class-students:', classStudentsErr);
-              setStudents([]);
-            }
+              return Promise.resolve(null); // For any relationships without valid IDs
+            });
+            
+            const studentResults = await Promise.all(studentPromises);
+            const validStudents = studentResults.filter(student => student !== null);
+            console.log("Processed students:", validStudents);
+            setStudents(validStudents);
+          } else {
+            console.log("No class-students found for class ID:", id);
+            setStudents([]);
           }
         } catch (studentsErr) {
           console.error('Error processing students:', studentsErr);

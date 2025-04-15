@@ -87,7 +87,7 @@ class ClassStudentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ClassStudent
-        fields = ['id', 'student_info']
+        fields = ['id', 'class_instance', 'student', 'pending_student', 'student_info']
         
     def get_student_info(self, obj):
         if obj.student:
