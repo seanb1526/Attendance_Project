@@ -70,33 +70,87 @@ def register_student(request):
     serializer = StudentRegistrationSerializer(data=request.data)
     if serializer.is_valid():
         email = request.data.get('email')
+        student_id = request.data.get('student_id')
         
-        # Check if a pending student with this email exists
         try:
-            pending_student = PendingStudent.objects.get(email=email)
+            # Check if a pending student with this email exists
+            pending_student = PendingStudent.objects.filter(email=email).first()
             
-            # Create student using pending student data
-            student = serializer.save(email_verified=False)
+            if not pending_student:
+                # Also try finding by student ID as a fallback
+                pending_student = PendingStudent.objects.filter(student_id=student_id).first()
             
-            # Update any ClassStudent records to point to the actual student
-            class_associations = ClassStudent.objects.filter(pending_student=pending_student)
-            for association in class_associations:
-                association.student = student
-                association.pending_student = None
-                association.save()
+            if pending_student:
+                print(f"Found existing pending student with email: {email}")
                 
-            # Delete the pending student record
-            pending_student.delete()
-            
-        except PendingStudent.DoesNotExist:
-            # No pending student found, just create a new student
-            student = serializer.save(email_verified=False)
+                # Create registered student using pending student data, but with the data from registration form
+                student = serializer.save(email_verified=False)
+                
+                # Update any ClassStudent records to point to the actual student
+                class_associations = ClassStudent.objects.filter(pending_student=pending_student)
+                association_count = 0
+                
+                for association in class_associations:
+                    association.student = student
+                    association.pending_student = None
+                    association.save()
+                    association_count += 1
+                
+                print(f"Updated {association_count} class associations for student {email}")
+                
+                # Delete the pending student record
+                pending_student_id = pending_student.id
+                pending_student.delete()
+                print(f"Deleted pending student with id {pending_student_id}")
+                
+            else:
+                # No pending student found, just create a new student
+                print(f"No pending student found for {email}, creating new student")
+                student = serializer.save(email_verified=False)
         
-        # Return the success response with the student ID
-        return Response({
-            'message': 'Registration successful.',
-            'student_id': str(student.id)
-        }, status=status.HTTP_201_CREATED)
+            # Generate verification token
+            token = jwt.encode({
+                'student_id': str(student.id),
+                'exp': datetime.utcnow() + timedelta(hours=24)
+            }, settings.SECRET_KEY, algorithm='HS256')
+
+            # Create verification URL for email
+            verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+
+            # Send verification email
+            html_message = f"""
+            <h3>Verify your email for ClassAttend</h3>
+            <p>Thank you for registering. Please click the button below to verify your email address:</p>
+            <p><a href="{verification_url}" style="background-color: #DEA514; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
+            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+            <p>{verification_url}</p>
+            """
+
+            try:
+                send_mail(
+                    subject="Verify your ClassAttend account",
+                    message=f"Please click the following link to verify your email: {verification_url}",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Error sending verification email: {str(e)}")
+                # Continue with registration even if email fails
+            
+            # Return the success response with the student ID
+            return Response({
+                'message': 'Registration successful. Please check your email for verification instructions.',
+                'student_id': str(student.id)
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Exception during student registration: {str(e)}")
+            traceback.print_exc()
+            return Response({
+                'error': f'Registration error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
