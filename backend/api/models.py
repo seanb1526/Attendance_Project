@@ -32,6 +32,23 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
+# New model for students added by faculty but not yet registered
+class PendingStudent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    student_id = models.CharField(max_length=50)
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    added_by = models.ForeignKey(Faculty, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('school', 'student_id')  # Student IDs must be unique within a school
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} (Pending)"
+
 class Class(models.Model):
     name = models.CharField(max_length=255)
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE)
@@ -43,10 +60,20 @@ class Class(models.Model):
 
 class ClassStudent(models.Model):
     class_instance = models.ForeignKey(Class, on_delete=models.CASCADE, related_name="students")
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, blank=True)
+    pending_student = models.ForeignKey(PendingStudent, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
-        unique_together = ('class_instance', 'student')
+        unique_together = (('class_instance', 'student'), ('class_instance', 'pending_student'))
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(student__isnull=False, pending_student__isnull=True) | 
+                    models.Q(student__isnull=True, pending_student__isnull=False)
+                ),
+                name='one_student_type_only'
+            )
+        ]
 
 class Event(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

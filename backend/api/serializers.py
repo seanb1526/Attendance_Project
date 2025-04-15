@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent
+from .models import School, Student, Faculty, Event, Class, Attendance, PendingStudent, ClassStudent, ClassEvent
 
 # ---------------- School Serializer ----------------
 class SchoolSerializer(serializers.ModelSerializer):
@@ -74,17 +74,64 @@ class EventSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'date', 'end_time', 'location', 'faculty', 'school', 
                  'checkin_before_minutes', 'checkin_after_minutes']
 
-# ---------------- Class Serializer ----------------
-class ClassSerializer(serializers.ModelSerializer):
-    students = serializers.SerializerMethodField()
+# ---------------- Pending Student Serializer ----------------
+class PendingStudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PendingStudent
+        fields = ['id', 'first_name', 'last_name', 'email', 'student_id', 'school', 'added_by', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+# ---------------- Class Student Serializer ----------------
+class ClassStudentSerializer(serializers.ModelSerializer):
+    student_info = serializers.SerializerMethodField()
     
+    class Meta:
+        model = ClassStudent
+        fields = ['id', 'class_instance', 'student', 'pending_student', 'student_info']
+        
+    def get_student_info(self, obj):
+        if obj.student:
+            return {
+                'id': str(obj.student.id),
+                'first_name': obj.student.first_name,
+                'last_name': obj.student.last_name,
+                'email': obj.student.email,
+                'student_id': obj.student.student_id,
+                'registered': True
+            }
+        elif obj.pending_student:
+            return {
+                'id': str(obj.pending_student.id),
+                'first_name': obj.pending_student.first_name,
+                'last_name': obj.pending_student.last_name,
+                'email': obj.pending_student.email,
+                'student_id': obj.pending_student.student_id,
+                'registered': False
+            }
+        return None
+
+# ---------------- Class Serializer ----------------
+class ClassSerializer(serializers.ModelSerializer):    
+    students = serializers.SerializerMethodField()
+
     class Meta:
         model = Class
         fields = ['id', 'name', 'faculty', 'school', 'students', 'semester']
         
     def get_students(self, obj):
+        # Get all ClassStudent associations for this class
         class_students = ClassStudent.objects.filter(class_instance=obj)
-        student_ids = [cs.student.id for cs in class_students]
+        student_ids = []
+        
+        # Include both regular students and pending students
+        for cs in class_students:
+            if cs.student:
+                student_ids.append(str(cs.student.id))
+            elif cs.pending_student:
+                student_ids.append(str(cs.pending_student.id))
+        
+        # Debug output to see what IDs we're returning
+        print(f"Class {obj.id} has students: {student_ids}")
         return student_ids
 
 # ---------------- Attendance Serializer ----------------

@@ -98,6 +98,7 @@ const AddClass = () => {
     try {
       // Get faculty ID from localStorage or session
       const facultyId = localStorage.getItem('facultyId');
+      const schoolId = localStorage.getItem('schoolId');
       
       if (!facultyId) {
         setError('You must be logged in to create a class');
@@ -105,44 +106,29 @@ const AddClass = () => {
         return;
       }
       
-      // Register new students first if they don't exist
-      const schoolId = localStorage.getItem('schoolId');
+      // Process each student - use our dedicated faculty-add-student endpoint
       const studentIds = [];
       
-      // Process each student
       for (const student of students) {
         try {
-          // Use the dedicated lookup endpoint to check if student exists by email
-          const lookupResponse = await axios.get(`/api/student/lookup/?email=${student.email}`);
+          // Use our new endpoint for faculty adding students
+          const addStudentResponse = await axios.post('/api/faculty/add-student/', {
+            email: student.email,
+            firstName: student.firstName,
+            lastName: student.lastName, 
+            studentId: student.studentId,
+            faculty_id: facultyId,
+            school_id: schoolId
+          });
           
-          // If we get a successful response, the student exists
-          studentIds.push(lookupResponse.data.id);
-        } catch (error) {
-          // If we get a 404, the student doesn't exist, so register them
-          if (error.response && error.response.status === 404) {
-            try {
-              const registerResponse = await axios.post('/api/student/register/', {
-                first_name: student.firstName,
-                last_name: student.lastName,
-                student_id: student.studentId,
-                email: student.email,
-                school: schoolId,
-              });
-              
-              // Get the student ID from the updated response
-              if (registerResponse.data && registerResponse.data.student_id) {
-                studentIds.push(registerResponse.data.student_id);
-              }
-            } catch (registerError) {
-              console.error(`Error registering student ${student.email}:`, registerError);
-            }
-          } else {
-            console.error(`Error looking up student ${student.email}:`, error);
+          if (addStudentResponse.data && addStudentResponse.data.id) {
+            studentIds.push(addStudentResponse.data.id);
+            console.log(`Added student ${student.email} with status: ${addStudentResponse.data.status}`);
           }
+        } catch (error) {
+          console.error(`Error processing student ${student.email}:`, error);
         }
       }
-      
-      console.log('Student IDs to be added to class:', studentIds);
       
       // Create the class - ensure semester is sent directly
       const classResponse = await axios.post('/api/class/create/', {

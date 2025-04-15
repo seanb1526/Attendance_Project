@@ -67,26 +67,67 @@ const EditClass = () => {
           semester: classResponse.data.semester || semesterOptions[0], // Get semester directly from API response
         });
         
-        // Fetch students enrolled in this class
-        if (Array.isArray(classResponse.data.students) && classResponse.data.students.length > 0) {
-          const studentPromises = classResponse.data.students.map(studentId => 
-            axios.get(`/api/students/${studentId}/`)
-          );
+        // Fetch students enrolled in this class using class-students endpoint
+        try {
+          const classStudentsResponse = await axios.get(`/api/class-students/?class_instance=${id}`);
           
-          try {
-            const studentResponses = await Promise.all(studentPromises);
-            const formattedStudents = studentResponses.map(res => ({
-              id: res.data.id,
-              firstName: res.data.first_name,
-              lastName: res.data.last_name,
-              studentId: res.data.student_id,
-              email: res.data.email
-            }));
+          if (classStudentsResponse.data && Array.isArray(classStudentsResponse.data) && classStudentsResponse.data.length > 0) {
+            console.log("Found class-students:", classStudentsResponse.data);
+            
+            const studentPromises = classStudentsResponse.data.map(relation => {
+              if (relation.student) {
+                // This is a registered student
+                return axios.get(`/api/students/${relation.student}/`)
+                  .then(res => ({
+                    id: res.data.id,
+                    firstName: res.data.first_name,
+                    lastName: res.data.last_name,
+                    studentId: res.data.student_id,
+                    email: res.data.email
+                  }))
+                  .catch(err => {
+                    console.error(`Error fetching registered student ${relation.student}:`, err);
+                    return null;
+                  });
+              } else if (relation.pending_student) {
+                // This is a pending/non-registered student
+                return axios.get(`/api/pending-students/${relation.pending_student}/`)
+                  .then(res => ({
+                    id: res.data.id,
+                    firstName: res.data.first_name,
+                    lastName: res.data.last_name,
+                    studentId: res.data.student_id,
+                    email: res.data.email
+                  }))
+                  .catch(err => {
+                    console.error(`Error fetching pending student ${relation.pending_student}:`, err);
+                    return null;
+                  });
+              } else if (relation.student_info) {
+                // Alternative: If the API returns nested student info directly
+                const info = relation.student_info;
+                return Promise.resolve({
+                  id: info.id,
+                  firstName: info.first_name,
+                  lastName: info.last_name,
+                  studentId: info.student_id,
+                  email: info.email
+                });
+              }
+              return Promise.resolve(null);
+            });
+            
+            const studentResults = await Promise.all(studentPromises);
+            const formattedStudents = studentResults.filter(student => student !== null);
+            console.log("Processed students for EditClass:", formattedStudents);
             setStudents(formattedStudents);
-          } catch (studentError) {
-            console.error('Error fetching students:', studentError);
+          } else {
+            console.log("No students found for class:", id);
             setStudents([]);
           }
+        } catch (studentError) {
+          console.error('Error fetching students:', studentError);
+          setStudents([]);
         }
         
         setLoading(false);
@@ -142,6 +183,7 @@ const EditClass = () => {
     try {
       // Get faculty ID from localStorage
       const facultyId = localStorage.getItem('facultyId');
+      const schoolId = localStorage.getItem('schoolId');
       
       if (!facultyId) {
         setError('You must be logged in to update a class');
@@ -149,45 +191,33 @@ const EditClass = () => {
         return;
       }
       
-      // Register/lookup new students
-      const schoolId = localStorage.getItem('schoolId');
+      // Process each student - use our dedicated faculty-add-student endpoint
       const studentIds = [];
       
-      // Process each student
       for (const student of students) {
         if (student.id) {
           // If student already has an ID, they're an existing student
           studentIds.push(student.id);
         } else {
           try {
-            // Check if student exists by email
-            const lookupResponse = await axios.get(`/api/student/lookup/?email=${student.email}`);
-            // If we get here, the student exists
-            studentIds.push(lookupResponse.data.id);
-          } catch (error) {
-            if (error.response?.status === 404) {
-              // Student doesn't exist - this is expected for new students
-              // Register them without logging an error
-              try {
-                const registerResponse = await axios.post('/api/student/register/', {
-                  first_name: student.firstName,
-                  last_name: student.lastName,
-                  student_id: student.studentId,
-                  email: student.email,
-                  school: schoolId,
-                });
-                
-                if (registerResponse.data && registerResponse.data.student_id) {
-                  studentIds.push(registerResponse.data.student_id);
-                }
-              } catch (registerError) {
-                // This is an actual error we should log
-                console.error(`Error registering student ${student.email}:`, registerError);
-              }
-            } else {
-              // This is an actual error we should log
-              console.error(`Error looking up student ${student.email}:`, error);
+            // Use the new faculty-add-student endpoint which always creates/updates pending students
+            // Pass the class ID to immediately associate the student with the class
+            const addStudentResponse = await axios.post('/api/faculty/add-student/', {
+              email: student.email,
+              firstName: student.firstName,
+              lastName: student.lastName,
+              studentId: student.studentId,
+              faculty_id: facultyId,
+              school_id: schoolId,
+              class_id: id  // Pass the class ID directly so backend can create ClassStudent entry
+            });
+            
+            if (addStudentResponse.data && addStudentResponse.data.id) {
+              studentIds.push(addStudentResponse.data.id);
+              console.log(`Added student ${student.email} with status: ${addStudentResponse.data.status}`);
             }
+          } catch (error) {
+            console.error(`Error processing student ${student.email}:`, error);
           }
         }
       }
@@ -202,7 +232,7 @@ const EditClass = () => {
         semester: classData.semester // Include semester directly in the payload
       };
       
-      console.log("Updating class with payload:", payload); // Debug log to verify semester is included
+      console.log("Updating class with payload:", payload);
       
       // Update the class
       const classResponse = await axios.put(`/api/class/${id}/update/`, payload);
