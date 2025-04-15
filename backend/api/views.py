@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent
-from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer, StudentSerializer
+from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent, PendingStudent
+from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer, StudentSerializer, PendingStudentSerializer
 from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
@@ -28,16 +28,54 @@ class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
 
+# ---------------- Pending Student ViewSet ----------------
+class PendingStudentViewSet(viewsets.ModelViewSet):
+    queryset = PendingStudent.objects.all()
+    serializer_class = PendingStudentSerializer
+    
+    def get_queryset(self):
+        queryset = PendingStudent.objects.all()
+        faculty_id = self.request.query_params.get('faculty', None)
+        school_id = self.request.query_params.get('school', None)
+        
+        if faculty_id:
+            queryset = queryset.filter(added_by=faculty_id)
+        
+        if school_id:
+            queryset = queryset.filter(school=school_id)
+            
+        return queryset
+
 # ---------------- Register Student ----------------
 @api_view(['POST'])
 def register_student(request):
     # Validate request data
     serializer = StudentRegistrationSerializer(data=request.data)
     if serializer.is_valid():
-        # Create student with email_verified set to False
-        student = serializer.save(email_verified=False)
+        email = request.data.get('email')
         
-        # Simply return the success response with the student ID
+        # Check if a pending student with this email exists
+        try:
+            pending_student = PendingStudent.objects.get(email=email)
+            
+            # Create student using pending student data
+            student = serializer.save(email_verified=False)
+            
+            # Update any ClassStudent records to point to the actual student
+            class_associations = ClassStudent.objects.filter(pending_student=pending_student)
+            for association in class_associations:
+                association.student = student
+                association.pending_student = None
+                association.save()
+                
+            # Delete the pending student record
+            pending_student.delete()
+            
+        except PendingStudent.DoesNotExist:
+            # No pending student found, just create a new student
+            student = serializer.save(email_verified=False)
+        
+        # Return the success response with the student ID
         return Response({
             'message': 'Registration successful.',
             'student_id': str(student.id)
@@ -100,20 +138,18 @@ def student_signin(request):
 
     try:
         student = Student.objects.get(email=email)
-        
+
         if student.student_id != student_id:
             return Response({'error': 'Invalid student ID'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
         token_expiration = timedelta(days=30) if remember_me else timedelta(hours=24)
-
         token = jwt.encode({
             'student_id': str(student.id),
             'exp': datetime.utcnow() + token_expiration
         }, settings.SECRET_KEY, algorithm='HS256')
 
         verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-
         html_message = f"""
         <h3>Sign In to ClassAttend</h3>
         <p>Click the button below to sign in to your account:</p>
@@ -151,7 +187,7 @@ def student_direct_signin(request):
 
     try:
         student = Student.objects.get(email=email)
-        
+
         # Verify the student ID matches
         if student.student_id != student_id:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -184,33 +220,33 @@ def student_direct_signin(request):
 class FacultyViewSet(viewsets.ModelViewSet):
     queryset = Faculty.objects.all()
     serializer_class = FacultySerializer
-    
+
     def perform_destroy(self, instance):
         # When deleting a faculty, we also want to delete all related data
         # First, get all classes created by this faculty
         classes = Class.objects.filter(faculty=instance)
-        
+
         # Get all events created by this faculty
         events = Event.objects.filter(faculty=instance)
-        
+
         # Delete all class-event associations where the event is from this faculty
         for event in events:
             ClassEvent.objects.filter(event=event).delete()
-        
+
         # Delete all attendance records for events created by this faculty
         for event in events:
             Attendance.objects.filter(event=event).delete()
-        
+
         # Delete all student-class associations for classes created by this faculty
         for class_instance in classes:
             ClassStudent.objects.filter(class_instance=class_instance).delete()
-        
+
         # Delete all classes
         classes.delete()
-        
+
         # Delete all events
         events.delete()
-        
+
         # Finally, delete the faculty account
         instance.delete()
 
@@ -218,31 +254,30 @@ class FacultyViewSet(viewsets.ModelViewSet):
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
-    
+
     def perform_update(self, serializer):
         # Ensure only the creator can update
         event = self.get_object()
         request_faculty_id = self.request.user.id  # If using token auth
-        
         # For non-token auth, you might need to extract from query params or request data
         faculty_id = self.request.query_params.get('faculty_id')
         if not faculty_id:
             faculty_id = self.request.data.get('faculty')
-        
+
         if str(event.faculty.id) != str(faculty_id):
             raise PermissionDenied("You don't have permission to edit this event")
-        
+
         serializer.save()
-    
+
     def perform_destroy(self, instance):
         # Ensure only the creator can delete
         request_faculty_id = self.request.query_params.get('faculty_id')
         if not request_faculty_id:
             request_faculty_id = self.request.data.get('faculty')
-            
+
         if str(instance.faculty.id) != str(request_faculty_id):
             raise PermissionDenied("You don't have permission to delete this event")
-        
+
         instance.delete()
 
 # ---------------- Class ViewSet ----------------
@@ -251,20 +286,15 @@ class ClassViewSet(viewsets.ModelViewSet):
     serializer_class = ClassSerializer
     
     def get_queryset(self):
-        """
-        This view should return a list of all classes
-        for the currently authenticated faculty.
-        """
         queryset = Class.objects.all()
         
-        # Get faculty_id from query parameters
         faculty_id = self.request.query_params.get('faculty', None)
         
-        # Filter by faculty ID if provided
         if faculty_id is not None:
-            queryset = queryset.filter(faculty=faculty_id)
+            queryset = queryset.filter(faculty__id=faculty_id)
             
         return queryset
+
     
     def perform_create(self, serializer):
         serializer.save()
@@ -280,7 +310,7 @@ class ClassViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You don't have permission to edit this class")
         
         serializer.save()
-    
+        
     def perform_destroy(self, instance):
         # Ensure only the creator can delete
         faculty_id = self.request.query_params.get('faculty_id')
@@ -318,7 +348,7 @@ def register_faculty(request):
             <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
             <p>{verification_url}</p>
             """
-            
+
             send_mail(
                 subject="Verify your ClassAttend Faculty Account",
                 message=f"Welcome to ClassAttend! Click the following link to verify your email: {verification_url}",
@@ -337,7 +367,6 @@ def register_faculty(request):
             return Response({
                 'error': f'Registration error: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ---------------- Faculty SignIn ----------------
@@ -345,10 +374,10 @@ def register_faculty(request):
 def faculty_signin(request):
     email = request.data.get('email')
     remember_me = request.data.get('remember_me', False)
-    
+
     try:
         faculty = Faculty.objects.get(email=email)
-        
+
         if not faculty.email_verified:
             return Response({
                 'error': 'Please verify your email address first'
@@ -365,7 +394,6 @@ def faculty_signin(request):
 
         # Send signin link via email
         signin_url = f"{settings.FRONTEND_URL}/verify-email?token={token}&type=faculty"
-        
         html_message = f"""
         <h3>Faculty Sign In</h3>
         <p>Click the button below to sign in to your ClassAttend account:</p>
@@ -419,15 +447,52 @@ def create_class(request):
             new_class = serializer.save()
             
             # If students are provided, add them to the class
-            student_ids = request.data.get('students', [])
-            for student_id in student_ids:
+            student_info_list = request.data.get('students', [])
+            for student_info in student_info_list:
                 try:
-                    student = Student.objects.get(id=student_id)
-                    ClassStudent.objects.create(
-                        class_instance=new_class,
-                        student=student
-                    )
-                except Student.DoesNotExist:
+                    # Try to find the student by email first
+                    email = student_info.get('email')
+                    student = None
+                    pending_student = None
+                    
+                    # Check if student exists already
+                    try:
+                        student = Student.objects.get(email=email)
+                    except Student.DoesNotExist:
+                        # Student doesn't exist in registered students
+                        # Check if email exists in pending students
+                        try:
+                            pending_student = PendingStudent.objects.get(email=email)
+                            # Update pending student info if needed
+                            pending_student.first_name = student_info.get('firstName')
+                            pending_student.last_name = student_info.get('lastName')
+                            pending_student.student_id = student_info.get('studentId')
+                            pending_student.save()
+                        except PendingStudent.DoesNotExist:
+                            # Create new pending student
+                            pending_student = PendingStudent.objects.create(
+                                first_name=student_info.get('firstName'),
+                                last_name=student_info.get('lastName'),
+                                student_id=student_info.get('studentId'),
+                                email=email,
+                                school=faculty.school,
+                                added_by=faculty
+                            )
+                    
+                    # Create ClassStudent relationship with either student or pending_student
+                    if student:
+                        ClassStudent.objects.create(
+                            class_instance=new_class,
+                            student=student
+                        )
+                    elif pending_student:
+                        ClassStudent.objects.create(
+                            class_instance=new_class,
+                            pending_student=pending_student
+                        )
+                        
+                except Exception as e:
+                    print(f"Error processing student {email}: {str(e)}")
                     continue
             
             return Response({
@@ -455,16 +520,30 @@ def lookup_student(request):
         return Response({'error': 'Email parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
+        # First try to find a registered student
         student = Student.objects.get(email=email)
         return Response({
             'id': str(student.id),
             'email': student.email,
             'first_name': student.first_name,
             'last_name': student.last_name,
-            'student_id': student.student_id
+            'student_id': student.student_id,
+            'status': 'registered'
         })
     except Student.DoesNotExist:
-        return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+        # Then check for a pending student
+        try:
+            pending = PendingStudent.objects.get(email=email)
+            return Response({
+                'id': str(pending.id),
+                'email': pending.email,
+                'first_name': pending.first_name,
+                'last_name': pending.last_name,
+                'student_id': pending.student_id,
+                'status': 'pending'
+            })
+        except PendingStudent.DoesNotExist:
+            return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
 
 # ---------------- Update Class ----------------
 @api_view(['PUT'])
@@ -490,16 +569,55 @@ def update_class(request, pk):
             # Remove existing student associations
             ClassStudent.objects.filter(class_instance=class_instance).delete()
             
-            # Add new student associations
-            student_ids = request.data.get('students', [])
-            for student_id in student_ids:
+            # Process each student
+            student_info_list = request.data.get('students', [])
+            faculty = class_instance.faculty
+            
+            for student_info in student_info_list:
                 try:
-                    student = Student.objects.get(id=student_id)
-                    ClassStudent.objects.create(
-                        class_instance=class_instance,
-                        student=student
-                    )
-                except Student.DoesNotExist:
+                    # Try to find the student by email first
+                    email = student_info.get('email')
+                    student = None
+                    pending_student = None
+                    
+                    # Check if student exists already
+                    try:
+                        student = Student.objects.get(email=email)
+                    except Student.DoesNotExist:
+                        # Student doesn't exist in registered students
+                        # Check if email exists in pending students
+                        try:
+                            pending_student = PendingStudent.objects.get(email=email)
+                            # Update pending student info if needed
+                            pending_student.first_name = student_info.get('firstName')
+                            pending_student.last_name = student_info.get('lastName')
+                            pending_student.student_id = student_info.get('studentId')
+                            pending_student.save()
+                        except PendingStudent.DoesNotExist:
+                            # Create new pending student
+                            pending_student = PendingStudent.objects.create(
+                                first_name=student_info.get('firstName'),
+                                last_name=student_info.get('lastName'),
+                                student_id=student_info.get('studentId'),
+                                email=email,
+                                school=faculty.school,
+                                added_by=faculty
+                            )
+                    
+                    # Create ClassStudent relationship with either student or pending_student
+                    if student:
+                        ClassStudent.objects.create(
+                            class_instance=class_instance,
+                            student=student
+                        )
+                    elif pending_student:
+                        ClassStudent.objects.create(
+                            class_instance=class_instance,
+                            pending_student=pending_student
+                        )
+                        
+                except Exception as e:
+                    print(f"Error processing student {email}: {str(e)}")
                     continue
         
         return Response({
@@ -515,14 +633,12 @@ def update_class(request, pk):
 class ClassEventViewSet(viewsets.ModelViewSet):
     queryset = ClassEvent.objects.all()
     serializer_class = ClassEventSerializer
-    
+
     def get_queryset(self):
         queryset = ClassEvent.objects.all()
         class_instance = self.request.query_params.get('class_instance', None)
-        
         if class_instance is not None:
             queryset = queryset.filter(class_instance=class_instance)
-        
         return queryset
 
 @api_view(['GET'])
@@ -533,9 +649,7 @@ def generate_event_qr(request, event_id):
         event_uuid = UUID(event_id)
         # Get the event
         event = Event.objects.get(pk=event_uuid)
-        
         # Create event attendance URL - this will be the data in the QR code
-        # Use the hosted domain instead of relying on settings
         attendance_url = f"https://trueattend.onrender.com/attend/{event_id}"
         
         # Generate QR code
@@ -547,9 +661,7 @@ def generate_event_qr(request, event_id):
         )
         qr.add_data(attendance_url)
         qr.make(fit=True)
-        
         img = qr.make_image(fill_color="black", back_color="white")
-        
         # Create a byte buffer for the image
         img_buffer = io.BytesIO()
         img.save(img_buffer)
@@ -558,75 +670,50 @@ def generate_event_qr(request, event_id):
         # Create a PDF
         buffer = io.BytesIO()
         pdf = canvas.Canvas(buffer, pagesize=letter)
-        
         # Add event details to PDF
         pdf.setFont("Helvetica-Bold", 16)
         pdf.drawString(1*inch, 10*inch, f"Event: {event.name}")
         pdf.setFont("Helvetica", 12)
-        
         # Format and display date and time
         event_date = event.date.strftime('%B %d, %Y')
         start_time = event.date.strftime('%I:%M %p')
-        
         pdf.drawString(1*inch, 9.5*inch, f"Date: {event_date}")
-        
-        # If end time exists, display start time and end time, otherwise just start time
         if event.end_time:
             end_time = event.end_time.strftime('%I:%M %p')
             pdf.drawString(1*inch, 9.0*inch, f"Time: {start_time} - {end_time}")
         else:
             pdf.drawString(1*inch, 9.0*inch, f"Time: {start_time}")
-        
-        # Add location if available
         if event.location:
             pdf.drawString(1*inch, 8.5*inch, f"Location: {event.location}")
-        
-        # Add instructions
         pdf.setFont("Helvetica-Bold", 14)
         pdf.drawString(1*inch, 8.0*inch, "Instructions:")
         pdf.setFont("Helvetica", 12)
         pdf.drawString(1*inch, 7.5*inch, "1. Print this QR code and display it in class")
         pdf.drawString(1*inch, 7.0*inch, "2. Have students scan this code with the ClassAttend app")
         pdf.drawString(1*inch, 6.5*inch, "3. Students must be logged in to record attendance")
-        
-        # Add QR code to PDF - FIX HERE
-        # Convert BytesIO to PIL Image for reportlab
+        # Add QR code to PDF
         img_pil = Image.open(img_buffer)
         pdf.drawInlineImage(img_pil, 2.5*inch, 2*inch, width=4*inch, height=4*inch)
-        
-        # Save PDF
         pdf.save()
-        
-        # Get the PDF value from the buffer
         buffer.seek(0)
-        
-        # Create the HTTP response with PDF content
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="event_{event_id}_qr.pdf"'
-        
         return response
-        
     except Event.DoesNotExist:
         return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# Add this to backend/api/views.py
 @api_view(['PUT'])
 def update_faculty_profile(request, pk):
     """Update just the first and last name of a faculty member"""
     try:
         faculty = Faculty.objects.get(pk=pk)
-        
-        # Update only first name and last name
         if 'first_name' in request.data:
             faculty.first_name = request.data['first_name']
         if 'last_name' in request.data:
             faculty.last_name = request.data['last_name']
-            
         faculty.save()
-        
         return Response({
             'id': str(faculty.id),
             'first_name': faculty.first_name,
@@ -643,21 +730,15 @@ def update_student_profile(request, pk):
     """Update student profile information"""
     try:
         student = Student.objects.get(pk=pk)
-        
-        # Update only allowed fields: first_name, last_name
         if 'first_name' in request.data:
             student.first_name = request.data['first_name']
         if 'last_name' in request.data:
             student.last_name = request.data['last_name']
-        # Update student_id only if provided and not already taken
         if 'student_id' in request.data and request.data['student_id'] != student.student_id:
-            # Check if the student ID is already taken
             if Student.objects.filter(student_id=request.data['student_id']).exclude(pk=pk).exists():
                 return Response({'error': 'This student ID is already in use'}, status=status.HTTP_400_BAD_REQUEST)
             student.student_id = request.data['student_id']
-            
         student.save()
-        
         return Response({
             'id': str(student.id),
             'first_name': student.first_name,
@@ -672,41 +753,26 @@ def update_student_profile(request, pk):
 
 @api_view(['GET'])
 def get_class_event_attendance(request, event_id, class_id):
-    """
-    Get attendance data for a specific event and class
-    """
+    """Get attendance data for a specific event and class"""
     try:
-        # Check if the class exists
         class_instance = Class.objects.get(pk=class_id)
-        
-        # Check if the event exists
         event = Event.objects.get(pk=event_id)
-        
-        # Check if the faculty requesting is the owner of the class
         if request.user.is_authenticated and hasattr(request.user, 'faculty'):
             faculty = request.user.faculty
         else:
-            # For development/testing, get faculty from query param
             faculty_id = request.query_params.get('faculty_id')
             if faculty_id:
                 faculty = Faculty.objects.get(pk=faculty_id)
             else:
                 return Response({"error": "Faculty authentication required"}, status=401)
-        
         if class_instance.faculty.id != faculty.id:
             return Response({"error": "You do not have permission to access this data"}, status=403)
-        
-        # Get all students in the class
         class_students = ClassStudent.objects.filter(class_instance=class_instance)
         student_ids = [cs.student.id for cs in class_students]
-        
-        # Get attendance records for the event and these students
         attendance_records = Attendance.objects.filter(
             event=event,
             student__id__in=student_ids
         ).select_related('student')
-        
-        # Format the attendance data
         attendance_data = []
         for record in attendance_records:
             attendance_data.append({
@@ -717,12 +783,10 @@ def get_class_event_attendance(request, event_id, class_id):
                 'student_id_number': record.student.student_id,
                 'attended': True,
                 'scanned_at': record.scanned_at,
-                'location': record.location,     # Include location data
-                'device_id': record.device_id    # Include device ID data
+                'location': record.location,
+                'device_id': record.device_id
             })
-        
         return Response(attendance_data)
-        
     except Class.DoesNotExist:
         return Response({"error": "Class not found"}, status=404)
     except Event.DoesNotExist:
@@ -737,16 +801,9 @@ def delete_student_account(request, pk):
     """Delete a student account and all associated data"""
     try:
         student = Student.objects.get(pk=pk)
-        
-        # First delete all attendance records
         Attendance.objects.filter(student=student).delete()
-        
-        # Delete all class-student associations
         ClassStudent.objects.filter(student=student).delete()
-        
-        # Finally delete the student account
         student.delete()
-        
         return Response({'message': 'Account successfully deleted'}, status=status.HTTP_200_OK)
     except Student.DoesNotExist:
         return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -757,13 +814,8 @@ def delete_student_account(request, pk):
 def get_student_attendance(request, student_id):
     """Get attendance history for a specific student"""
     try:
-        # Verify the student exists
         student = Student.objects.get(pk=student_id)
-        
-        # Get all attendance records for this student
         attendance_records = Attendance.objects.filter(student=student).order_by('-scanned_at')
-        
-        # Get event details for each attendance record
         attendance_data = []
         for record in attendance_records:
             event = record.event
@@ -772,13 +824,11 @@ def get_student_attendance(request, student_id):
                 'event_id': str(event.id),
                 'event_name': event.name,
                 'event_date': event.date,
-                'event_end_time': event.end_time,  # Include the end_time field here
+                'event_end_time': event.end_time,
                 'event_location': event.location or 'No location specified',
                 'scanned_at': record.scanned_at,
             })
-        
         return Response(attendance_data)
-        
     except Student.DoesNotExist:
         return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:

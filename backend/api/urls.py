@@ -5,12 +5,13 @@ from django.http import JsonResponse
 
 router = DefaultRouter()
 router.register(r'schools', views.SchoolViewSet)
-router.register(r'facultys', views.FacultyViewSet)
 router.register(r'students', views.StudentViewSet)
+router.register(r'facultys', views.FacultyViewSet)
 router.register(r'events', views.EventViewSet)
 router.register(r'classes', views.ClassViewSet)
 router.register(r'attendance', views.AttendanceViewSet)
 router.register(r'class-events', views.ClassEventViewSet)
+router.register(r'pending-students', views.PendingStudentViewSet)
 
 # Simple database connection test endpoint
 def db_connection_test(request):
@@ -51,4 +52,5 @@ urlpatterns = [
     path('students/<uuid:pk>/update/', views.update_student_profile, name='update-student-profile'),
     path('students/<uuid:pk>/delete/', views.delete_student_account, name='delete-student-account'),
     path('students/<uuid:student_id>/attendance/', views.get_student_attendance, name='student-attendance'),
+    path('api/pending-students/', views.PendingStudentViewSet.as_view({'get': 'list'}), name='pending-students'),
 ]
