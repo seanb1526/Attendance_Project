@@ -67,26 +67,67 @@ const EditClass = () => {
           semester: classResponse.data.semester || semesterOptions[0], // Get semester directly from API response
         });
         
-        // Fetch students enrolled in this class
-        if (Array.isArray(classResponse.data.students) && classResponse.data.students.length > 0) {
-          const studentPromises = classResponse.data.students.map(studentId => 
-            axios.get(`/api/students/${studentId}/`)
-          );
+        // Fetch students enrolled in this class using class-students endpoint
+        try {
+          const classStudentsResponse = await axios.get(`/api/class-students/?class_instance=${id}`);
           
-          try {
-            const studentResponses = await Promise.all(studentPromises);
-            const formattedStudents = studentResponses.map(res => ({
-              id: res.data.id,
-              firstName: res.data.first_name,
-              lastName: res.data.last_name,
-              studentId: res.data.student_id,
-              email: res.data.email
-            }));
+          if (classStudentsResponse.data && Array.isArray(classStudentsResponse.data) && classStudentsResponse.data.length > 0) {
+            console.log("Found class-students:", classStudentsResponse.data);
+            
+            const studentPromises = classStudentsResponse.data.map(relation => {
+              if (relation.student) {
+                // This is a registered student
+                return axios.get(`/api/students/${relation.student}/`)
+                  .then(res => ({
+                    id: res.data.id,
+                    firstName: res.data.first_name,
+                    lastName: res.data.last_name,
+                    studentId: res.data.student_id,
+                    email: res.data.email
+                  }))
+                  .catch(err => {
+                    console.error(`Error fetching registered student ${relation.student}:`, err);
+                    return null;
+                  });
+              } else if (relation.pending_student) {
+                // This is a pending/non-registered student
+                return axios.get(`/api/pending-students/${relation.pending_student}/`)
+                  .then(res => ({
+                    id: res.data.id,
+                    firstName: res.data.first_name,
+                    lastName: res.data.last_name,
+                    studentId: res.data.student_id,
+                    email: res.data.email
+                  }))
+                  .catch(err => {
+                    console.error(`Error fetching pending student ${relation.pending_student}:`, err);
+                    return null;
+                  });
+              } else if (relation.student_info) {
+                // Alternative: If the API returns nested student info directly
+                const info = relation.student_info;
+                return Promise.resolve({
+                  id: info.id,
+                  firstName: info.first_name,
+                  lastName: info.last_name,
+                  studentId: info.student_id,
+                  email: info.email
+                });
+              }
+              return Promise.resolve(null);
+            });
+            
+            const studentResults = await Promise.all(studentPromises);
+            const formattedStudents = studentResults.filter(student => student !== null);
+            console.log("Processed students for EditClass:", formattedStudents);
             setStudents(formattedStudents);
-          } catch (studentError) {
-            console.error('Error fetching students:', studentError);
+          } else {
+            console.log("No students found for class:", id);
             setStudents([]);
           }
+        } catch (studentError) {
+          console.error('Error fetching students:', studentError);
+          setStudents([]);
         }
         
         setLoading(false);
