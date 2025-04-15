@@ -160,13 +160,15 @@ const EditClass = () => {
         } else {
           try {
             // Use the new faculty-add-student endpoint which always creates/updates pending students
+            // Pass the class ID to immediately associate the student with the class
             const addStudentResponse = await axios.post('/api/faculty/add-student/', {
               email: student.email,
               firstName: student.firstName,
               lastName: student.lastName,
               studentId: student.studentId,
               faculty_id: facultyId,
-              school_id: schoolId
+              school_id: schoolId,
+              class_id: id  // Pass the class ID directly so backend can create ClassStudent entry
             });
             
             if (addStudentResponse.data && addStudentResponse.data.id) {

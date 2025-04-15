@@ -119,8 +119,19 @@ class ClassSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'faculty', 'school', 'students', 'semester']
         
     def get_students(self, obj):
+        # Get all ClassStudent associations for this class
         class_students = ClassStudent.objects.filter(class_instance=obj)
-        student_ids = [cs.student.id for cs in class_students]
+        student_ids = []
+        
+        # Include both regular students and pending students
+        for cs in class_students:
+            if cs.student:
+                student_ids.append(str(cs.student.id))
+            elif cs.pending_student:
+                student_ids.append(str(cs.pending_student.id))
+        
+        # Debug output to see what IDs we're returning
+        print(f"Class {obj.id} has students: {student_ids}")
         return student_ids
 
 # ---------------- Attendance Serializer ----------------
