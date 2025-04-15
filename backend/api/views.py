@@ -452,12 +452,21 @@ def create_class(request):
                 try:
                     # Try to find the student by email first
                     email = student_info.get('email')
+                    if not email:
+                        continue
+                        
                     student = None
                     pending_student = None
                     
                     # Check if student exists already
                     try:
                         student = Student.objects.get(email=email)
+                        # If student exists, create the association
+                        ClassStudent.objects.create(
+                            class_instance=new_class,
+                            student=student
+                        )
+                        print(f"Added registered student {email} to class")
                     except Student.DoesNotExist:
                         # Student doesn't exist in registered students
                         # Check if email exists in pending students
@@ -478,21 +487,16 @@ def create_class(request):
                                 school=faculty.school,
                                 added_by=faculty
                             )
-                    
-                    # Create ClassStudent relationship with either student or pending_student
-                    if student:
-                        ClassStudent.objects.create(
-                            class_instance=new_class,
-                            student=student
-                        )
-                    elif pending_student:
+                        
+                        # Create association with pending student
                         ClassStudent.objects.create(
                             class_instance=new_class,
                             pending_student=pending_student
                         )
+                        print(f"Added pending student {email} to class")
                         
                 except Exception as e:
-                    print(f"Error processing student {email}: {str(e)}")
+                    print(f"Error processing student {email if 'email' in locals() else 'unknown'}: {str(e)}")
                     continue
             
             return Response({
@@ -507,6 +511,7 @@ def create_class(request):
             'error': 'Faculty not found'
         }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        traceback.print_exc()
         return Response({
             'error': f'Error creating class: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -545,6 +550,95 @@ def lookup_student(request):
         except PendingStudent.DoesNotExist:
             return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
 
+# ---------------- Faculty Add Student ----------------
+@api_view(['POST'])
+def faculty_add_student(request):
+    """API endpoint for faculty adding a student to a class - always creates PendingStudent"""
+    try:
+        # Required fields
+        email = request.data.get('email')
+        first_name = request.data.get('firstName') or request.data.get('first_name', '')
+        last_name = request.data.get('lastName') or request.data.get('last_name', '')
+        student_id = request.data.get('studentId') or request.data.get('student_id', '')
+        faculty_id = request.data.get('faculty_id')
+        school_id = request.data.get('school_id')
+        
+        if not email or not faculty_id or not school_id:
+            return Response({
+                'error': 'Email, faculty_id and school_id are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if student already exists as registered user
+        try:
+            student = Student.objects.get(email=email)
+            # Return the existing student info
+            return Response({
+                'id': str(student.id),
+                'email': student.email,
+                'first_name': student.first_name,
+                'last_name': student.last_name,
+                'student_id': student.student_id,
+                'status': 'registered',
+                'message': 'Student already registered'
+            })
+        except Student.DoesNotExist:
+            # Check if already a pending student
+            try:
+                pending = PendingStudent.objects.get(email=email)
+                # Update pending student info if needed
+                if first_name:
+                    pending.first_name = first_name
+                if last_name:
+                    pending.last_name = last_name
+                if student_id:
+                    pending.student_id = student_id
+                pending.save()
+                
+                return Response({
+                    'id': str(pending.id),
+                    'email': pending.email,
+                    'first_name': pending.first_name,
+                    'last_name': pending.last_name,
+                    'student_id': pending.student_id,
+                    'status': 'pending',
+                    'message': 'Pending student updated'
+                })
+            except PendingStudent.DoesNotExist:
+                # Create new pending student
+                try:
+                    faculty = Faculty.objects.get(id=faculty_id)
+                    school = School.objects.get(id=school_id)
+                    
+                    pending = PendingStudent.objects.create(
+                        first_name=first_name,
+                        last_name=last_name,
+                        student_id=student_id,
+                        email=email,
+                        school=school,
+                        added_by=faculty
+                    )
+                    
+                    return Response({
+                        'id': str(pending.id),
+                        'email': pending.email,
+                        'first_name': pending.first_name,
+                        'last_name': pending.last_name,
+                        'student_id': pending.student_id,
+                        'status': 'pending',
+                        'message': 'Pending student created'
+                    }, status=status.HTTP_201_CREATED)
+                except (Faculty.DoesNotExist, School.DoesNotExist) as e:
+                    return Response({
+                        'error': f'Error finding faculty or school: {str(e)}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        print(f"Exception in faculty_add_student: {str(e)}")
+        traceback.print_exc()
+        return Response({
+            'error': f'Error adding student: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # ---------------- Update Class ----------------
 @api_view(['PUT'])
 def update_class(request, pk):
@@ -570,54 +664,77 @@ def update_class(request, pk):
             ClassStudent.objects.filter(class_instance=class_instance).delete()
             
             # Process each student
-            student_info_list = request.data.get('students', [])
+            student_items = request.data.get('students', [])
             faculty = class_instance.faculty
             
-            for student_info in student_info_list:
+            for item in student_items:
                 try:
-                    # Try to find the student by email first
-                    email = student_info.get('email')
-                    student = None
-                    pending_student = None
-                    
-                    # Check if student exists already
-                    try:
-                        student = Student.objects.get(email=email)
-                    except Student.DoesNotExist:
-                        # Student doesn't exist in registered students
-                        # Check if email exists in pending students
+                    if isinstance(item, str):
+                        # Handle UUID string (already registered student)
                         try:
-                            pending_student = PendingStudent.objects.get(email=email)
-                            # Update pending student info if needed
-                            pending_student.first_name = student_info.get('firstName')
-                            pending_student.last_name = student_info.get('lastName')
-                            pending_student.student_id = student_info.get('studentId')
-                            pending_student.save()
-                        except PendingStudent.DoesNotExist:
-                            # Create new pending student
-                            pending_student = PendingStudent.objects.create(
-                                first_name=student_info.get('firstName'),
-                                last_name=student_info.get('lastName'),
-                                student_id=student_info.get('studentId'),
-                                email=email,
-                                school=faculty.school,
-                                added_by=faculty
+                            student = Student.objects.get(id=item)
+                            ClassStudent.objects.create(
+                                class_instance=class_instance,
+                                student=student
                             )
+                        except Student.DoesNotExist:
+                            print(f"Student with ID {item} not found")
+                        continue
                     
-                    # Create ClassStudent relationship with either student or pending_student
-                    if student:
-                        ClassStudent.objects.create(
-                            class_instance=class_instance,
-                            student=student
-                        )
-                    elif pending_student:
-                        ClassStudent.objects.create(
-                            class_instance=class_instance,
-                            pending_student=pending_student
-                        )
+                    # Handle object format (from manual add or CSV)
+                    if isinstance(item, dict):
+                        email = item.get('email')
+                        
+                        if not email:
+                            print("Skipping student with no email")
+                            continue
+                            
+                        # First check if student is already registered
+                        registered_student = None
+                        pending_student = None
+                        
+                        try:
+                            registered_student = Student.objects.get(email=email)
+                            # If we find the student, create the class association
+                            ClassStudent.objects.create(
+                                class_instance=class_instance,
+                                student=registered_student
+                            )
+                            print(f"Added registered student {email} to class")
+                            continue  # Skip to next student
+                        except Student.DoesNotExist:
+                            # Student not registered, now check if they're pending
+                            try:
+                                pending_student = PendingStudent.objects.get(email=email)
+                                # Update pending student info if needed
+                                pending_student.first_name = item.get('firstName', pending_student.first_name)
+                                pending_student.last_name = item.get('lastName', pending_student.last_name)
+                                pending_student.student_id = item.get('studentId', pending_student.student_id)
+                                pending_student.save()
+                                print(f"Updated pending student {email}")
+                            except PendingStudent.DoesNotExist:
+                                # Create new pending student
+                                pending_student = PendingStudent.objects.create(
+                                    first_name=item.get('firstName', ''),
+                                    last_name=item.get('lastName', ''),
+                                    student_id=item.get('studentId', ''),
+                                    email=email,
+                                    school=faculty.school,
+                                    added_by=faculty
+                                )
+                                print(f"Created pending student {email}")
+                            
+                            # Create association with the pending student
+                            if pending_student:
+                                ClassStudent.objects.create(
+                                    class_instance=class_instance,
+                                    pending_student=pending_student
+                                )
+                                print(f"Added pending student {email} to class")
                         
                 except Exception as e:
-                    print(f"Error processing student {email}: {str(e)}")
+                    print(f"Error processing student: {str(e)}")
+                    traceback.print_exc()
                     continue
         
         return Response({
@@ -627,6 +744,8 @@ def update_class(request, pk):
     except Class.DoesNotExist:
         return Response({'error': 'Class not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        print(f"Exception in update_class: {str(e)}")
+        traceback.print_exc()
         return Response({'error': f'Error updating class: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ---------------- Class Event ViewSet ----------------

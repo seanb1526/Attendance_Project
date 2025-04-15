@@ -53,4 +53,5 @@ urlpatterns = [
     path('students/<uuid:pk>/delete/', views.delete_student_account, name='delete-student-account'),
     path('students/<uuid:student_id>/attendance/', views.get_student_attendance, name='student-attendance'),
     path('api/pending-students/', views.PendingStudentViewSet.as_view({'get': 'list'}), name='pending-students'),
+    path('faculty/add-student/', views.faculty_add_student, name='faculty-add-student'),
 ]
