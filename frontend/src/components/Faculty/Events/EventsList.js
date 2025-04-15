@@ -25,6 +25,7 @@ import {
   InputAdornment,
   Switch,
   FormControlLabel,
+  Divider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
@@ -62,6 +63,7 @@ const EventsList = () => {
       try {
         // Get school ID from localStorage
         const schoolId = localStorage.getItem('schoolId');
+        const facultyId = localStorage.getItem('facultyId');
         
         if (!schoolId) {
           throw new Error('School ID not found. You may need to log in again.');
@@ -77,8 +79,8 @@ const EventsList = () => {
         
         setAllEvents(sortedEvents);
         
-        // Fetch classes for this school
-        const classesResponse = await axios.get(`/api/classes/?school=${schoolId}`);
+        // Fetch classes for this school AND faculty
+        const classesResponse = await axios.get(`/api/classes/?school=${schoolId}&faculty=${facultyId}`);
         setClasses(classesResponse.data);
         setError(null);
       } catch (err) {
@@ -103,13 +105,13 @@ const EventsList = () => {
     // Set time to beginning of the day to include same-day events
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    // Get school ID from localStorage to ensure we're always filtering by school
+    // Get school ID and faculty ID from localStorage
     const schoolId = localStorage.getItem('schoolId');
+    const facultyId = localStorage.getItem('facultyId');
     
     // First filter by school ID to ensure we only show events from this school
     let filteredEvents = allEvents;
     
-    // Check data type and format for comparison
     if (schoolId) {
       // Use string comparison to handle potential type differences
       filteredEvents = allEvents.filter(event => 
@@ -133,7 +135,34 @@ const EventsList = () => {
       );
     }
     
-    setEvents(filteredEvents);
+    // Separate events into two groups: faculty events and other events
+    let facultyEvents = [];
+    let otherEvents = [];
+    
+    filteredEvents.forEach(event => {
+      if (String(event.faculty) === String(facultyId)) {
+        facultyEvents.push(event);
+      } else {
+        otherEvents.push(event);
+      }
+    });
+    
+    // Sort each group by nearest date
+    facultyEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+    otherEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // Combine the sorted groups
+    setEvents([...facultyEvents, ...otherEvents]);
+    
+    // Store information about whether an event is a faculty event
+    // We'll use this to render the divider later
+    if (facultyEvents.length > 0 && otherEvents.length > 0) {
+      // Store the index of the first non-faculty event
+      sessionStorage.setItem('dividerIndex', facultyEvents.length);
+    } else {
+      sessionStorage.removeItem('dividerIndex');
+    }
+    
   }, [searchQuery, allEvents, showPastEvents]);
 
   const handleSearchChange = (event) => {
@@ -358,113 +387,159 @@ const EventsList = () => {
             </Paper>
           ) : (
             <Grid container spacing={3}>
-              {events.map((event) => {
+              {events.map((event, index) => {
                 const { date, time } = formatDateTime(event.date);
                 const endTime = event.end_time ? formatDateTime(event.end_time).time : null;
                 const eventDate = new Date(event.date);
                 const isPast = isEventPast(event.date);
                 const isToday = isEventToday(event.date);
+                const dividerIndex = parseInt(sessionStorage.getItem('dividerIndex'));
+                const showDivider = !isNaN(dividerIndex) && index === dividerIndex;
                 
                 return (
-                  <Grid item xs={12} md={6} lg={4} key={event.id}>
-                    <Paper
-                      sx={{
-                        p: 3,
-                        bgcolor: '#FFFFFF',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        borderLeft: isPast 
-                          ? '4px solid #999' 
-                          : isToday 
-                            ? '4px solid #4CAF50' // Green for today's events 
-                            : '4px solid #DEA514', // Gold for future events
-                      }}
-                    >
-                      {isToday && (
-                        <Chip 
-                          label="Today" 
-                          size="small" 
-                          sx={{ 
-                            alignSelf: 'flex-start', 
-                            mb: 1,
-                            bgcolor: '#4CAF50',
-                            color: 'white',
-                          }} 
-                        />
-                      )}
-                      
-                      <Typography variant="h6" sx={{ mb: 2, color: '#2C2C2C' }}>
-                        {event.name}
-                      </Typography>
-                      
-                      <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <CalendarTodayIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
-                          <Typography variant="body2" color="text.secondary">
-                            {date}
+                  <React.Fragment key={event.id}>
+                    {showDivider && (
+                      <Grid item xs={12}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          width: '100%', 
+                          my: 2 
+                        }}>
+                          <Divider sx={{ flexGrow: 1 }} />
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              px: 2, 
+                              color: 'text.secondary',
+                              fontWeight: 'medium',
+                              bgcolor: 'background.paper',
+                              borderRadius: 1,
+                              py: 0.5
+                            }}
+                          >
+                            Other Faculty Events
                           </Typography>
+                          <Divider sx={{ flexGrow: 1 }} />
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <AccessTimeIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
-                          <Typography variant="body2" color="text.secondary">
-                            {time}{endTime ? ` - ${endTime}` : ''}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <LocationOnIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
-                          <Typography variant="body2" color="text.secondary">
-                            {event.location || 'No location specified'}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Check-in Window: {event.checkin_before_minutes > 0 ? `${event.checkin_before_minutes} min before` : 'Starts at event time'} 
-                          {' to '}
-                          {event.checkin_after_minutes > 0 ? `${event.checkin_after_minutes} min after` : 'event time only'}
-                        </Typography>
-                      </Box>
-
-                      <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
-                        {event.description || 'No description available'}
-                      </Typography>
-
-                      <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: '1px solid #eee', justifyContent: 'space-between' }}>
-                        <Button
-                          size="small"
-                          startIcon={<QrCode2Icon />}
-                          sx={{ color: '#666' }}
-                          onClick={() => handleDownloadQrCode(event.id)}
-                        >
-                          QR Code
-                        </Button>
-                        
-                        <Box>
-                          {/* Only show edit button if the faculty created this event */}
-                          {canEditEvent(event) && (
-                            <Button
-                              size="small"
-                              startIcon={<EditIcon />}
-                              onClick={() => navigate(`/faculty/events/${event.id}/edit`)}
-                              sx={{ color: '#666', mr: 1 }}
-                            >
-                              Edit
-                            </Button>
+                      </Grid>
+                    )}
+                    
+                    <Grid item xs={12} md={6} lg={4}>
+                      <Paper
+                        sx={{
+                          p: 3,
+                          bgcolor: '#FFFFFF',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          borderLeft: isPast 
+                            ? '4px solid #999' 
+                            : isToday 
+                              ? '4px solid #4CAF50' 
+                              : canEditEvent(event) 
+                                ? '4px solid #DEA514' 
+                                : '4px solid #90caf9', // Different color for others' events
+                        }}
+                      >
+                        <Box sx={{ mb: 1, display: 'flex', gap: 1 }}>
+                          {isToday && (
+                            <Chip 
+                              label="Today" 
+                              size="small" 
+                              sx={{ 
+                                mb: 1,
+                                bgcolor: '#4CAF50',
+                                color: 'white',
+                              }} 
+                            />
                           )}
                           
+                          {canEditEvent(event) && (
+                            <Chip 
+                              label="Your Event" 
+                              size="small" 
+                              sx={{ 
+                                mb: 1,
+                                bgcolor: '#DEA514',
+                                color: 'white',
+                              }} 
+                            />
+                          )}
+                        </Box>
+                        
+                        <Typography variant="h6" sx={{ mb: 2, color: '#2C2C2C' }}>
+                          {event.name}
+                        </Typography>
+                        
+                        <Box sx={{ mb: 2 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <CalendarTodayIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {date}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <AccessTimeIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {time}{endTime ? ` - ${endTime}` : ''}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <LocationOnIcon sx={{ fontSize: 20, mr: 1, color: '#666' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {event.location || 'No location specified'}
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Check-in Window: {event.checkin_before_minutes > 0 ? `${event.checkin_before_minutes} min before` : 'Starts at event time'} 
+                            {' to '}
+                            {event.checkin_after_minutes > 0 ? `${event.checkin_after_minutes} min after` : 'event time only'}
+                          </Typography>
+                        </Box>
+
+                        <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+                          {event.description || 'No description available'}
+                        </Typography>
+
+                        <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: '1px solid #eee', justifyContent: 'space-between' }}>
                           <Button
                             size="small"
-                            onClick={() => handleAssignEvent(event)}
-                            sx={{ color: '#DEA514' }}
+                            startIcon={<QrCode2Icon />}
+                            sx={{ color: '#666' }}
+                            onClick={() => handleDownloadQrCode(event.id)}
                           >
-                            Assign to Classes
+                            QR Code
                           </Button>
+                          
+                          <Box>
+                            {/* Only show edit button if the faculty created this event */}
+                            {canEditEvent(event) && (
+                              <Button
+                                size="small"
+                                startIcon={<EditIcon />}
+                                onClick={() => navigate(`/faculty/events/${event.id}/edit`)}
+                                sx={{ color: '#666', mr: 1 }}
+                              >
+                                Edit
+                              </Button>
+                            )}
+                            
+                            <Button
+                              size="small"
+                              onClick={() => handleAssignEvent(event)}
+                              sx={{ color: '#DEA514' }}
+                            >
+                              Assign to Classes
+                            </Button>
+                          </Box>
                         </Box>
-                      </Box>
-                    </Paper>
-                  </Grid>
+                      </Paper>
+                    </Grid>
+                  </React.Fragment>
                 );
               })}
             </Grid>

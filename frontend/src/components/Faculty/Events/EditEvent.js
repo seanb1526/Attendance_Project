@@ -275,7 +275,7 @@ const EditEvent = () => {
           <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
-              label="Time"
+              label="Start Time"
               type="time"
               required
               InputLabelProps={{ shrink: true }}

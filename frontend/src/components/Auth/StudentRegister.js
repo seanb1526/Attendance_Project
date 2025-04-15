@@ -8,6 +8,7 @@ import {
   Grid,
   MenuItem,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../utils/axios';
@@ -24,6 +25,7 @@ const StudentRegister = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Fetch schools list
@@ -36,6 +38,7 @@ const StudentRegister = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
     
     try {
       const response = await axios.post('/api/student/register/', {
@@ -55,10 +58,11 @@ const StudentRegister = () => {
         email: '',
         school: '',
       });
-      // Remove any navigation here - let the user read the success message
+      setLoading(false); // Reset loading state on success
     } catch (error) {
       console.error('Registration error:', error.response?.data || error);
       setError(error.response?.data?.email?.[0] || 'Registration failed. Please try again.');
+      setLoading(false);
     }
   };
 
@@ -81,6 +85,7 @@ const StudentRegister = () => {
                 value={formData.firstName}
                 onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                 required
+                disabled={loading || !!success}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -90,6 +95,7 @@ const StudentRegister = () => {
                 value={formData.lastName}
                 onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                 required
+                disabled={loading || !!success}
               />
             </Grid>
             <Grid item xs={12}>
@@ -99,6 +105,7 @@ const StudentRegister = () => {
                 value={formData.studentId}
                 onChange={(e) => setFormData({...formData, studentId: e.target.value})}
                 required
+                disabled={loading || !!success}
               />
             </Grid>
             <Grid item xs={12}>
@@ -110,6 +117,7 @@ const StudentRegister = () => {
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 required
                 helperText="Use your school email address"
+                disabled={loading || !!success}
               />
             </Grid>
             <Grid item xs={12}>
@@ -120,6 +128,7 @@ const StudentRegister = () => {
                 value={formData.school}
                 onChange={(e) => setFormData({...formData, school: e.target.value})}
                 required
+                disabled={loading || !!success}
               >
                 {schools.map((school) => (
                   <MenuItem key={school.id} value={school.id}>
@@ -133,14 +142,22 @@ const StudentRegister = () => {
                 type="submit"
                 variant="contained"
                 fullWidth
+                disabled={loading || !!success}
                 sx={{
-                  bgcolor: '#DEA514',
+                  height: '48px',
+                  bgcolor: success ? '#4caf50' : '#DEA514',
                   '&:hover': {
-                    bgcolor: '#B88A10',
+                    bgcolor: success ? '#388e3c' : '#B88A10',
                   }
                 }}
               >
-                Register
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : success ? (
+                  'Registration Complete'
+                ) : (
+                  'Register'
+                )}
               </Button>
             </Grid>
           </Grid>
@@ -150,4 +167,4 @@ const StudentRegister = () => {
   );
 };
 
-export default StudentRegister; 
+export default StudentRegister;

@@ -10,6 +10,7 @@ import {
   Container,
   FormControlLabel,
   Checkbox,
+  CircularProgress,
 } from '@mui/material';
 import axios from '../../utils/axios';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -26,6 +27,7 @@ const FacultySignIn = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Check if already authenticated and redirect if so
   useEffect(() => {
@@ -39,6 +41,7 @@ const FacultySignIn = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
     
     try {
       const response = await axios.post('/api/faculty/signin/', {
@@ -48,8 +51,10 @@ const FacultySignIn = () => {
       
       setSuccess('Please check your email for the sign-in link.');
       setEmail('');
+      setLoading(false); // Reset loading state on success
     } catch (error) {
       setError(error.response?.data?.error || 'Sign in failed. Please try again.');
+      setLoading(false);
     }
   };
 
@@ -74,6 +79,7 @@ const FacultySignIn = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 helperText="Enter your faculty email address"
+                disabled={loading || !!success}
               />
             </Grid>
             <Grid item xs={12}>
@@ -83,6 +89,7 @@ const FacultySignIn = () => {
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     color="primary"
+                    disabled={loading || !!success}
                   />
                 }
                 label="Remember Me"
@@ -94,9 +101,23 @@ const FacultySignIn = () => {
                 fullWidth
                 variant="contained"
                 size="large"
-                sx={{ mt: 2 }}
+                sx={{ 
+                  mt: 2,
+                  height: '48px',
+                  bgcolor: success ? '#4caf50' : '#DEA514',
+                  '&:hover': {
+                    bgcolor: success ? '#388e3c' : '#B88A10',
+                  }
+                }}
+                disabled={loading || !!success}
               >
-                Send Sign In Link
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : success ? (
+                  'Email Sent'
+                ) : (
+                  'Send Sign In Link'
+                )}
               </Button>
             </Grid>
           </Grid>
@@ -106,4 +127,4 @@ const FacultySignIn = () => {
   );
 };
 
-export default FacultySignIn; 
+export default FacultySignIn;
