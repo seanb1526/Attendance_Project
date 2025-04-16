@@ -63,6 +63,7 @@ urlpatterns = [
     path('admin/faculty-by-school/', views.get_faculty_by_school, name='faculty-by-school'),
     path('admin/promote-faculty/', views.promote_faculty_to_admin, name='promote-faculty'),
     path('admin/update-role/', views.update_admin_role, name='update-admin-role'),
+    path('admin/change-password/', views.change_admin_password, name='change-admin-password'),
     
     # Include router paths last
     path('', include(router.urls)),  # API Endpoints for all models

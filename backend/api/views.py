@@ -1764,3 +1764,50 @@ def update_admin_role(request):
         return Response({
             'error': f'Error: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['PUT'])
+def change_admin_password(request):
+    """Change an admin's password"""
+    try:
+        admin_id = request.data.get('admin_id')
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        
+        if not admin_id or not current_password or not new_password:
+            return Response({
+                'error': 'Admin ID, current password, and new password are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            admin = Admin.objects.get(id=admin_id)
+        except Admin.DoesNotExist:
+            return Response({
+                'error': 'Administrator not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        # Verify current password
+        if not check_password(current_password, admin.password_hash):
+            return Response({
+                'error': 'Current password is incorrect'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+            
+        # Check if new password meets minimum requirements
+        if len(new_password) < 8:
+            return Response({
+                'error': 'Password must be at least 8 characters long'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Update password hash
+        admin.password_hash = make_password(new_password)
+        admin.save()
+        
+        return Response({
+            'message': 'Password changed successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error changing admin password: {str(e)}")
+        traceback.print_exc()
+        return Response({
+            'error': f'Error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

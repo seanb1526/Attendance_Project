@@ -36,6 +36,7 @@ import AdminHome from './AdminHome';
 import UniversityManagement from './UniversityManagement';
 import FacultyAdminManagement from './FacultyAdminManagement';
 import AdminManagement from './AdminManagement';
+import AdminSettings from './AdminSettings';
 
 const drawerWidth = 240;
 
@@ -312,14 +313,7 @@ const AdminDashboard = () => {
           <Route path="universities" element={<UniversityManagement adminInfo={adminInfo} />} />
           <Route path="faculty-admins" element={<FacultyAdminManagement adminInfo={adminInfo} />} />
           <Route path="administrators" element={<AdminManagement adminInfo={adminInfo} />} />
-          <Route path="settings" element={
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>System Settings</Typography>
-              <Typography variant="body1" color="text.secondary">
-                System settings will be implemented in a future update.
-              </Typography>
-            </Paper>
-          } />
+          <Route path="settings" element={<AdminSettings adminInfo={adminInfo} />} />
         </Routes>
       </Box>
     </Box>
