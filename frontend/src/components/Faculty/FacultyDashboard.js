@@ -27,6 +27,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from '../../utils/axios';  // Adjust the path as needed
 import { checkFacultyAdminStatus } from '../../utils/adminUtils';
+import { clearToken } from '../../utils/auth';
 
 // Import sub-components (we'll create these next)
 import Dashboard from './Dashboard';
@@ -103,9 +104,7 @@ const FacultyDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('facultyId');
-    localStorage.removeItem('schoolId');
-    
+    clearToken();
     navigate('/');
   };
 

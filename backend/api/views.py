@@ -205,15 +205,14 @@ def verify_email(request):
 @api_view(['POST'])
 def student_signin(request):
     email = request.data.get('email')
-    student_id = request.data.get('student_id')
     remember_me = request.data.get('remember_me', False)
+
+    if not email:
+        return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         student = Student.objects.get(email=email)
-
-        if student.student_id != student_id:
-            return Response({'error': 'Invalid student ID'}, status=status.HTTP_400_BAD_REQUEST)
-
+        
         # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
         token_expiration = timedelta(days=30) if remember_me else timedelta(hours=24)
         token = jwt.encode({

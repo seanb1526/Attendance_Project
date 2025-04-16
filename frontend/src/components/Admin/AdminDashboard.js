@@ -30,6 +30,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from '../../utils/axios';
+import { clearToken } from '../../utils/auth';
 
 // Import sub-components for routes
 import AdminHome from './AdminHome';
@@ -96,13 +97,7 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    // Clear admin-related data from localStorage
-    localStorage.removeItem('adminId');
-    localStorage.removeItem('adminRole');
-    localStorage.removeItem('userType');
-    localStorage.removeItem('authToken');
-    
-    // Redirect to home page
+    clearToken();
     navigate('/');
   };
 

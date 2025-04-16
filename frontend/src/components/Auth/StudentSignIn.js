@@ -70,7 +70,11 @@ const StudentSignIn = () => {
     
     try {
       if (signInMethod === 1) {
-        // Direct sign-in method
+        // Direct sign-in method - requires both email and student ID
+        if (!formData.email || !formData.studentId) {
+          throw new Error('Email and Student ID are required for direct sign-in');
+        }
+        
         const response = await axios.post('/api/student/direct-signin/', {
           email: formData.email,
           student_id: formData.studentId,
@@ -89,10 +93,13 @@ const StudentSignIn = () => {
           navigate(redirectUrl);
         }, 1000);
       } else {
-        // Email link method
+        // Email link method - only requires email
+        if (!formData.email) {
+          throw new Error('Email is required');
+        }
+        
         const response = await axios.post('/api/student/signin/', {
           email: formData.email,
-          student_id: formData.studentId,
           remember_me: rememberMe
         });
         
@@ -100,7 +107,11 @@ const StudentSignIn = () => {
         setEmailSent(true);
       }
     } catch (error) {
-      setError(error.response?.data?.error || 'Sign in failed. Please try again.');
+      if (error.message) {
+        setError(error.message);
+      } else {
+        setError(error.response?.data?.error || 'Sign in failed. Please try again.');
+      }
       setEmailSent(false);
     } finally {
       setLoading(false);
@@ -166,16 +177,22 @@ const StudentSignIn = () => {
                   disabled={loading}
                 />
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Student ID"
-                  value={formData.studentId}
-                  onChange={(e) => setFormData({...formData, studentId: e.target.value})}
-                  required
-                  disabled={loading}
-                />
-              </Grid>
+              
+              {/* Only show Student ID field for direct sign-in method */}
+              {signInMethod === 1 && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Student ID"
+                    value={formData.studentId}
+                    onChange={(e) => setFormData({...formData, studentId: e.target.value})}
+                    required
+                    disabled={loading}
+                    helperText="Required for direct sign-in"
+                  />
+                </Grid>
+              )}
+              
               <Grid item xs={12}>
                 <FormControlLabel
                   control={

@@ -22,6 +22,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import { useNavigate } from 'react-router-dom';
 import jsQR from 'jsqr';
 import axios from '../../utils/axios';
+import { clearToken } from '../../utils/auth';
 import StudentProfileModal from './StudentProfileModal';
 import AttendanceHistory from './AttendanceHistory';
 
@@ -67,10 +68,8 @@ const StudentDashboard = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('studentId');
-    localStorage.removeItem('userType');
-    navigate('/auth');
+    clearToken();
+    navigate('/');
   };
 
   const startCamera = async () => {

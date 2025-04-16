@@ -10,14 +10,15 @@ export const getToken = () => {
   return localStorage.getItem('authToken');
 };
 
+// Helper to clear all authentication tokens from localStorage
 export const clearToken = () => {
   localStorage.removeItem('authToken');
   localStorage.removeItem('studentId');
   localStorage.removeItem('facultyId');
-  localStorage.removeItem('adminId');
-  localStorage.removeItem('userType');
   localStorage.removeItem('schoolId');
+  localStorage.removeItem('adminId');
   localStorage.removeItem('adminRole');
+  localStorage.removeItem('userType');
 };
 
 export const getAuthHeaders = () => {
