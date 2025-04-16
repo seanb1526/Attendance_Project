@@ -63,4 +63,7 @@ urlpatterns = [
     path('admin/profile/<uuid:pk>/', views.admin_profile, name='admin-profile'),
     path('admin/stats/', views.admin_stats, name='admin-stats'),
     path('admin/recent-activity/', views.admin_recent_activity, name='admin-recent-activity'),
+    path('admin/faculty-by-school/', views.get_faculty_by_school, name='faculty-by-school'),
+    path('admin/promote-faculty/', views.promote_faculty_to_admin, name='promote-faculty'),
+    path('admin/update-role/', views.update_admin_role, name='update-admin-role'),
 ]

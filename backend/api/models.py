@@ -113,6 +113,7 @@ class Admin(models.Model):
         ('master', 'Master Admin'),
         ('co', 'Co-Administrator'),
         ('sub', 'University Admin'),
+        ('revoked', 'Revoked'),
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -124,6 +125,7 @@ class Admin(models.Model):
     password_hash = models.CharField(max_length=255)  # Hashed password for direct login
     created_at = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(null=True, blank=True)
+    faculty = models.OneToOneField(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='admin_profile')
     
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.get_role_display()})"

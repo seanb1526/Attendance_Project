@@ -27,6 +27,7 @@ import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from '../../utils/axios';
 
@@ -34,13 +35,15 @@ import axios from '../../utils/axios';
 import AdminHome from './AdminHome';
 import UniversityManagement from './UniversityManagement';
 import FacultyAdminManagement from './FacultyAdminManagement';
+import AdminManagement from './AdminManagement';
 
 const drawerWidth = 240;
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
   { text: 'Universities', icon: <SchoolIcon />, path: '/admin/universities' },
-  { text: 'Faculty Admins', icon: <SupervisorAccountIcon />, path: '/admin/faculty-admins' },
+  { text: 'Faculty', icon: <SupervisorAccountIcon />, path: '/admin/faculty-admins' },
+  { text: 'Administrators', icon: <AdminPanelSettingsIcon />, path: '/admin/administrators', rolesAllowed: ['master', 'co'] },
   { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
 ];
 
@@ -244,6 +247,7 @@ const AdminDashboard = () => {
             {location.pathname === '/admin/dashboard' && 'Administration Dashboard'}
             {location.pathname === '/admin/universities' && 'University Management'}
             {location.pathname === '/admin/faculty-admins' && 'Faculty Administrator Management'}
+            {location.pathname === '/admin/administrators' && 'Administrator Management'}
             {location.pathname === '/admin/settings' && 'System Settings'}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -307,6 +311,7 @@ const AdminDashboard = () => {
           <Route path="dashboard" element={<AdminHome adminInfo={adminInfo} />} />
           <Route path="universities" element={<UniversityManagement adminInfo={adminInfo} />} />
           <Route path="faculty-admins" element={<FacultyAdminManagement adminInfo={adminInfo} />} />
+          <Route path="administrators" element={<AdminManagement adminInfo={adminInfo} />} />
           <Route path="settings" element={
             <Paper sx={{ p: 3 }}>
               <Typography variant="h5" sx={{ mb: 2 }}>System Settings</Typography>

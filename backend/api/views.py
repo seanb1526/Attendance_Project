@@ -1309,3 +1309,309 @@ def admin_recent_activity(request):
         return Response({
             'error': f'Error fetching recent activity: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def promote_faculty_to_admin(request):
+    """Promote a faculty member to an administrator role"""
+    try:
+        # Check authorization - only master and co-admins can promote faculty
+        requester_id = request.data.get('requester_id')
+        if not requester_id:
+            return Response({
+                'error': 'Requester ID is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            requester = Admin.objects.get(id=requester_id)
+            # Check if requester has appropriate role
+            if requester.role not in ['master', 'co']:
+                return Response({
+                    'error': 'Only master and co-administrators can promote faculty members'
+                }, status=status.HTTP_403_FORBIDDEN)
+        except Admin.DoesNotExist:
+            return Response({
+                'error': 'Invalid requester'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get parameters
+        faculty_id = request.data.get('faculty_id')
+        if not faculty_id:
+            return Response({
+                'error': 'Faculty ID is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        role = request.data.get('role', 'sub')  # Default to sub-admin
+        
+        # Prevent anyone from setting master role
+        if role == 'master':
+            return Response({
+                'error': 'Master administrator role cannot be assigned through the API'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Co-admins can only create sub-admins
+        if requester.role == 'co' and role != 'sub':
+            return Response({
+                'error': 'Co-administrators can only promote faculty to university admin role'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get the faculty
+        try:
+            faculty = Faculty.objects.get(id=faculty_id)
+        except Faculty.DoesNotExist:
+            return Response({
+                'error': 'Faculty not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        # Check if faculty already has an admin account
+        if Admin.objects.filter(email=faculty.email).exists():
+            return Response({
+                'error': 'This faculty member already has an administrator account'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Generate a secure random password
+        import secrets
+        import string
+        alphabet = string.ascii_letters + string.digits
+        temp_password = ''.join(secrets.choice(alphabet) for i in range(12))
+            
+        # Create admin account
+        admin = Admin.objects.create(
+            email=faculty.email,
+            first_name=faculty.first_name,
+            last_name=faculty.last_name,
+            role=role,
+            school=faculty.school,
+            password_hash=make_password(temp_password),
+            faculty=faculty
+        )
+        
+        # Send email with temporary password
+        try:
+            html_message = f"""
+            <h3>You've been promoted to an Administrator</h3>
+            <p>You have been promoted to a {admin.get_role_display()} role in the TrueAttend system.</p>
+            <p>You can now log in to the administrator panel using your email and the following temporary password:</p>
+            <p style="font-size: 16px; font-weight: bold;">{temp_password}</p>
+            <p>Please change your password after logging in for the first time.</p>
+            <p><a href="{settings.FRONTEND_URL}/auth/admin" style="background-color: #DEA514; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Admin Login</a></p>
+            """
+            
+            send_mail(
+                subject="You've been promoted to TrueAttend Administrator",
+                message=f"You've been promoted to a {admin.get_role_display()} role. Your temporary password is: {temp_password}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[admin.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+        except Exception as e:
+            # Log the error but continue - we'll just show the temporary password in the response
+            print(f"Error sending admin promotion email: {str(e)}")
+            
+        # Return success with admin info
+        return Response({
+            'message': 'Faculty member successfully promoted to administrator',
+            'admin_id': str(admin.id),
+            'email': admin.email,
+            'role': admin.role,
+            'temp_password': temp_password  # Include the temp password in the response
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        print(f"Error promoting faculty to admin: {str(e)}")
+        traceback.print_exc()
+        return Response({
+            'error': f'Error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def get_faculty_by_school(request):
+    """Get all faculty members grouped by school with admin status information"""
+    try:
+        # Check if requester is admin
+        admin_id = request.query_params.get('admin_id')
+        if not admin_id:
+            return Response({
+                'error': 'Admin ID is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            requester = Admin.objects.get(id=admin_id)
+        except Admin.DoesNotExist:
+            return Response({
+                'error': 'Invalid administrator'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        # If sub-admin, only show faculty from their school
+        if requester.role == 'sub' and requester.school:
+            schools = School.objects.filter(id=requester.school.id)
+        else:
+            # For master and co-admins, show all schools
+            schools = School.objects.all()
+            
+        # Prepare response data
+        result = []
+        
+        for school in schools:
+            faculty_list = Faculty.objects.filter(school=school)
+            faculty_data = []
+            
+            for faculty in faculty_list:
+                # Check if faculty is already an admin
+                admin_role = None
+                admin_id = None
+                
+                try:
+                    admin = Admin.objects.get(faculty=faculty)
+                    admin_role = admin.role
+                    admin_id = str(admin.id)
+                except Admin.DoesNotExist:
+                    pass
+                
+                faculty_data.append({
+                    'id': str(faculty.id),
+                    'first_name': faculty.first_name,
+                    'last_name': faculty.last_name,
+                    'email': faculty.email,
+                    'is_admin': admin_role is not None,
+                    'admin_role': admin_role,
+                    'admin_id': admin_id
+                })
+            
+            result.append({
+                'school_id': str(school.id),
+                'school_name': school.name,
+                'faculty': faculty_data
+            })
+            
+        return Response(result)
+        
+    except Exception as e:
+        print(f"Error getting faculty by school: {str(e)}")
+        traceback.print_exc()
+        return Response({
+            'error': f'Error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['PUT'])
+def update_admin_role(request):
+    """Update or revoke an admin's role - only available to master and co-administrators"""
+    try:
+        # Check authorization - only master and co-admins can update roles
+        requester_id = request.data.get('requester_id')
+        if not requester_id:
+            return Response({
+                'error': 'Requester ID is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            requester = Admin.objects.get(id=requester_id)
+            # Check if requester has appropriate role
+            if requester.role not in ['master', 'co']:
+                return Response({
+                    'error': 'Only master and co-administrators can update admin roles'
+                }, status=status.HTTP_403_FORBIDDEN)
+        except Admin.DoesNotExist:
+            return Response({
+                'error': 'Invalid requester'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get target admin
+        admin_id = request.data.get('admin_id')
+        if not admin_id:
+            return Response({
+                'error': 'Admin ID is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            admin = Admin.objects.get(id=admin_id)
+        except Admin.DoesNotExist:
+            return Response({
+                'error': 'Administrator not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        # Check for permissions:
+        # 1. Only master admins can modify other master admins or modify co-admins
+        # 2. Co-admins can only modify sub-admins
+        if requester.role == 'co' and (admin.role == 'master' or admin.role == 'co'):
+            return Response({
+                'error': 'Co-administrators can only modify university administrators'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        new_role = request.data.get('new_role')
+        
+        # Check if we're revoking admin status entirely
+        if new_role == 'revoke':
+            # Remove admin role but keep the record for audit purposes
+            admin.role = 'revoked'
+            admin.save()
+            
+            # If this was a faculty member, update the link
+            if admin.faculty:
+                admin.faculty = None
+                admin.save()
+                
+            return Response({
+                'message': 'Administrator privileges revoked successfully',
+                'admin_id': str(admin.id)
+            })
+            
+        # Otherwise updating role - validate role
+        if new_role not in ['co', 'sub']:
+            return Response({
+                'error': 'Invalid role specified. Only "co" and "sub" roles are allowed.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Co-admins can only set role to 'sub'
+        if requester.role == 'co' and new_role != 'sub':
+            return Response({
+                'error': 'Co-administrators can only set university administrator role'
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        # Prevent anyone from setting master role
+        if new_role == 'master':
+            return Response({
+                'error': 'Master administrator role cannot be assigned through the API'
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        # Update the role
+        admin.role = new_role
+        admin.save()
+        
+        # Send notification email
+        try:
+            html_message = f"""
+            <h3>Your Administrator Role Has Been Updated</h3>
+            <p>Your role in the TrueAttend system has been updated to {admin.get_role_display()}.</p>
+            <p>If you have any questions about your access level or responsibilities, 
+            please contact a master administrator.</p>
+            <p><a href="{settings.FRONTEND_URL}/auth/admin" 
+            style="background-color: #DEA514; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            Go to Admin Portal</a></p>
+            """
+            
+            send_mail(
+                subject="Your TrueAttend Administrator Role Has Been Updated",
+                message=f"Your role has been updated to {admin.get_role_display()}.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[admin.email],
+                html_message=html_message,
+                fail_silently=True,  # Don't fail if email sending fails
+            )
+        except Exception as e:
+            # Log but continue - email notification is not critical
+            print(f"Error sending role update email: {str(e)}")
+        
+        # Return success response
+        return Response({
+            'message': 'Administrator role updated successfully',
+            'admin_id': str(admin.id),
+            'new_role': new_role
+        })
+        
+    except Exception as e:
+        print(f"Error updating admin role: {str(e)}")
+        traceback.print_exc()
+        return Response({
+            'error': f'Error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
