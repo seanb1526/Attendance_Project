@@ -31,7 +31,6 @@ export const checkFacultyAdminStatus = async (facultyId) => {
 
     return { isAdmin: false, adminRole: null, adminId: null };
   } catch (error) {
-    console.error("Error checking admin status:", error);
     return { isAdmin: false, adminRole: null, adminId: null };
   }
 };
@@ -45,44 +44,27 @@ export const checkFacultyAdminStatus = async (facultyId) => {
  * @returns {Promise<boolean>}
  */
 export const canEditEvent = async (eventSchoolId, userFacultyId, eventCreatorId, adminStatus) => {
-  console.log("canEditEvent called with:", {
-    eventSchoolId,
-    userFacultyId,
-    eventCreatorId,
-    adminStatus
-  });
-
   // If the faculty created the event, they can edit it
   if (userFacultyId === eventCreatorId) {
-    console.log("User created the event - granting permission");
     return true;
   }
 
   // If they're not an admin, they can't edit others' events
   if (!adminStatus || !adminStatus.isAdmin) {
-    console.log("User is not an admin - denying permission");
     return false;
   }
 
-  console.log("User is an admin with role:", adminStatus.adminRole);
-
   // Master and co-admins can edit any event
   if (adminStatus.adminRole === 'master' || adminStatus.adminRole === 'co') {
-    console.log("User is master/co-admin - granting permission");
     return true;
   }
 
   // If they're a sub-admin, check if they're from the same school as the event
   if (adminStatus.adminRole === 'sub') {
     try {
-      console.log("User is sub-admin - checking school match");
-      
       // Get the faculty's school ID
       const facultyResponse = await axios.get(`/api/faculty/${userFacultyId}/`);
       const facultySchoolId = facultyResponse.data.school;
-      
-      console.log("Faculty school ID:", facultySchoolId);
-      console.log("Event school ID:", eventSchoolId);
       
       // Convert both to strings for comparison to avoid type mismatches
       const facultySchoolStr = String(facultySchoolId);
@@ -90,18 +72,14 @@ export const canEditEvent = async (eventSchoolId, userFacultyId, eventCreatorId,
       
       // Sub-admins can edit any event from their school
       if (facultySchoolStr === eventSchoolStr) {
-        console.log("School IDs match - granting permission");
         return true;
       } else {
-        console.log("School IDs don't match - denying permission");
         return false;
       }
     } catch (error) {
-      console.error("Error checking event permission:", error);
       return false;
     }
   }
 
-  console.log("No permission rules matched - denying by default");
   return false;
 };
