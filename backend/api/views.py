@@ -1556,18 +1556,17 @@ def update_admin_role(request):
         
         # Check if we're revoking admin status entirely
         if new_role == 'revoke':
-            # Remove admin role but keep the record for audit purposes
-            admin.role = 'revoked'
-            admin.save()
+            # Completely delete the admin record instead of just changing the role
+            admin_id = str(admin.id)  # Store ID for the response
+            admin_email = admin.email  # Store email for the response
             
-            # If this was a faculty member, update the link
-            if admin.faculty:
-                admin.faculty = None
-                admin.save()
-                
+            # Delete the admin record
+            admin.delete()
+            
             return Response({
                 'message': 'Administrator privileges revoked successfully',
-                'admin_id': str(admin.id)
+                'admin_id': admin_id,
+                'email': admin_email
             })
             
         # Otherwise updating role - validate role

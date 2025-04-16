@@ -40,21 +40,26 @@ const FacultyProfileModal = ({ open, onClose }) => {
     try {
       setLoading(true);
       const facultyId = localStorage.getItem('facultyId');
+      
       if (!facultyId) {
-        throw new Error('Faculty ID not found');
+        setError('Faculty ID not found. Please try logging in again.');
+        setLoading(false);
+        return;
       }
-  
-      const response = await axios.get(`/api/facultys/${facultyId}/`);
+
+      // Fix API endpoint: change facultys to faculty
+      const response = await axios.get(`/api/faculty/${facultyId}/`);
+      
       setFormData({
         first_name: response.data.first_name || '',
         last_name: response.data.last_name || '',
-        email: response.data.email || '', // Store the email in the state
+        email: response.data.email || '',
       });
-      setError(null);
+      
+      setLoading(false);
     } catch (err) {
       console.error('Error fetching faculty data:', err);
       setError('Failed to load your profile information.');
-    } finally {
       setLoading(false);
     }
   };
@@ -66,42 +71,41 @@ const FacultyProfileModal = ({ open, onClose }) => {
     });
   };
 
-// Update this in frontend/src/components/Faculty/FacultyProfileModal.js
-const handleSubmit = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
 
-    const facultyId = localStorage.getItem('facultyId');
-    if (!facultyId) {
-      throw new Error('Faculty ID not found');
-    }
+      const facultyId = localStorage.getItem('facultyId');
+      if (!facultyId) {
+        throw new Error('Faculty ID not found');
+      }
 
-    // Use the new endpoint specifically for updating profile
-    await axios.put(`/api/faculty/${facultyId}/update-profile/`, {
-      first_name: formData.first_name,
-      last_name: formData.last_name
-    });
-    
-    setSuccess('Profile updated successfully');
-    
-    // Wait a moment before closing the modal
-    setTimeout(() => {
-      onClose();
-      // Refresh the page to show updated name
-      window.location.reload();
-    }, 1500);
-  } catch (err) {
-    console.error('Error updating profile:', err);
-    if (err.response) {
-      console.error('Error response:', err.response.data);
+      // Use the new endpoint specifically for updating profile
+      await axios.put(`/api/faculty/${facultyId}/update-profile/`, {
+        first_name: formData.first_name,
+        last_name: formData.last_name
+      });
+      
+      setSuccess('Profile updated successfully');
+      
+      // Wait a moment before closing the modal
+      setTimeout(() => {
+        onClose();
+        // Refresh the page to show updated name
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      if (err.response) {
+        console.error('Error response:', err.response.data);
+      }
+      setError('Failed to update profile. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setError('Failed to update profile. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleDeleteAccount = async () => {
     try {
@@ -114,7 +118,7 @@ const handleSubmit = async () => {
       }
 
       // Delete the faculty account
-      await axios.delete(`/api/facultys/${facultyId}/`);
+      await axios.delete(`/api/faculty/${facultyId}/`);
       
       // Clear local storage
       localStorage.removeItem('authToken');

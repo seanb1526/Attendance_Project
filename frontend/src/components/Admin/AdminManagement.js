@@ -131,7 +131,7 @@ const AdminManagement = ({ adminInfo }) => {
       setSnackbarOpen(true);
       setConfirmRevokeOpen(false);
       
-      // Remove from local state
+      // Remove from local state - completely remove since the backend now deletes the record
       setAdmins(prevAdmins => prevAdmins.filter(admin => admin.id !== adminToRevoke.id));
       
     } catch (err) {

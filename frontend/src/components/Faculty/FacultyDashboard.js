@@ -23,8 +23,10 @@ import AddBoxIcon from '@mui/icons-material/AddBox';
 import SchoolIcon from '@mui/icons-material/School';
 import ClassIcon from '@mui/icons-material/Class';
 import LogoutIcon from '@mui/icons-material/Logout';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from '../../utils/axios';  // Adjust the path as needed
+import { checkFacultyAdminStatus } from '../../utils/adminUtils';
 
 // Import sub-components (we'll create these next)
 import Dashboard from './Dashboard';
@@ -36,16 +38,9 @@ import ClassDetails from './Classes/ClassDetails';
 import EditClass from './Classes/EditClass';
 import EditEvent from './Events/EditEvent';
 import FacultyProfileModal from './FacultyProfileModal';
+import AdminPanel from './Admin/AdminPanel';
 
 const drawerWidth = 240;
-
-const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/faculty/dashboard' },
-  { text: 'Events', icon: <EventIcon />, path: '/faculty/events' },
-  { text: 'Add Event', icon: <AddBoxIcon />, path: '/faculty/events/add' },
-  { text: 'Classes', icon: <ClassIcon />, path: '/faculty/classes' },
-  { text: 'Add Class', icon: <SchoolIcon />, path: '/faculty/classes/add' },
-];
 
 const FacultyDashboard = () => {
   const theme = useTheme();
@@ -54,6 +49,9 @@ const FacultyDashboard = () => {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [facultyName, setFacultyName] = useState('Professor');
   const [schoolName, setSchoolName] = useState('');  // Add state for school name
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminRole, setAdminRole] = useState(null);
+  const [adminId, setAdminId] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -64,8 +62,16 @@ const FacultyDashboard = () => {
         const schoolId = localStorage.getItem('schoolId');
         
         if (facultyId) {
-          const response = await axios.get(`/api/facultys/${facultyId}/`);
+          const response = await axios.get(`/api/faculty/${facultyId}/`);
           setFacultyName(response.data.last_name || 'Professor');
+          
+          // Check if faculty is also an admin
+          const adminStatus = await checkFacultyAdminStatus(facultyId);
+          console.log("FacultyDashboard - Faculty admin status:", adminStatus);
+          
+          setIsAdmin(adminStatus.isAdmin);
+          setAdminRole(adminStatus.adminRole);
+          setAdminId(adminStatus.adminId);
           
           // If we have a school ID, fetch the school name
           if (schoolId) {
@@ -103,6 +109,30 @@ const FacultyDashboard = () => {
     
     navigate('/');
   };
+
+  // Create dynamic menu items array
+  const getMenuItems = () => {
+    const items = [
+      { text: 'Dashboard', icon: <DashboardIcon />, path: '/faculty/dashboard' },
+      { text: 'Events', icon: <EventIcon />, path: '/faculty/events' },
+      { text: 'Add Event', icon: <AddBoxIcon />, path: '/faculty/events/add' },
+      { text: 'Classes', icon: <ClassIcon />, path: '/faculty/classes' },
+      { text: 'Add Class', icon: <SchoolIcon />, path: '/faculty/classes/add' },
+    ];
+    
+    // Add Admin Panel menu item if faculty is also a sub-admin
+    if (isAdmin && adminRole === 'sub') {
+      items.push({
+        text: 'Admin Panel',
+        icon: <AdminPanelSettingsIcon />,
+        path: '/faculty/admin'
+      });
+    }
+    
+    return items;
+  };
+
+  const menuItems = getMenuItems();
 
   const drawer = (
     <Box sx={{ bgcolor: '#FFFFFF', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -207,6 +237,9 @@ const FacultyDashboard = () => {
       </Box>
     </Box>
   );
+
+  // Include debugging output for the route passing
+  console.log("FacultyDashboard - Passing admin status to routes:", { isAdmin, adminRole, adminId });
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -335,13 +368,22 @@ const FacultyDashboard = () => {
           <Routes>
             <Route index element={<Navigate to="/faculty/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="events" element={<EventsList />} />
+            <Route 
+              path="events" 
+              element={<EventsList adminStatus={{ isAdmin, adminRole, adminId }} />} 
+            />
             <Route path="events/add" element={<AddEvent />} />
-            <Route path="events/:id/edit" element={<EditEvent />} />
+            <Route 
+              path="events/:id/edit" 
+              element={<EditEvent adminStatus={{ isAdmin, adminRole, adminId }} />}
+            />
             <Route path="classes" element={<ClassesList />} />
             <Route path="classes/add" element={<AddClass />} />
             <Route path="classes/:id" element={<ClassDetails />} />
             <Route path="classes/:id/edit" element={<EditClass />} />
+            {isAdmin && adminRole === 'sub' && (
+              <Route path="admin" element={<AdminPanel adminId={adminId} adminRole={adminRole} />} />
+            )}
           </Routes>
         </Container>
       </Box>

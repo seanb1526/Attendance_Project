@@ -26,27 +26,33 @@ import {
   Switch,
   FormControlLabel,
   Divider,
+  DialogContentText,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import HistoryIcon from '@mui/icons-material/History';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../../utils/axios';
 import { getApiUrl } from '../../../utils/urlHelper';
+import { canEditEvent } from '../../../utils/adminUtils';
 
-const EventsList = () => {
+const EventsList = ({ adminStatus }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedClasses, setSelectedClasses] = useState([]);
-  
+  const [eventPermissions, setEventPermissions] = useState({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState(null);
+
   // Add new state variables for data fetching
   const [events, setEvents] = useState([]);
   const [allEvents, setAllEvents] = useState([]); // Store all events for filtering
@@ -82,6 +88,21 @@ const EventsList = () => {
         // Fetch classes for this school AND faculty
         const classesResponse = await axios.get(`/api/classes/?school=${schoolId}&faculty=${facultyId}`);
         setClasses(classesResponse.data);
+
+        // Determine editing permissions for each event
+        if (adminStatus?.isAdmin) {
+          const permissions = {};
+          for (const event of sortedEvents) {
+            permissions[event.id] = await canEditEvent(
+              event.school,
+              facultyId,
+              event.faculty,
+              adminStatus
+            );
+          }
+          setEventPermissions(permissions);
+        }
+        
         setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -96,7 +117,7 @@ const EventsList = () => {
     };
     
     fetchData();
-  }, []);
+  }, [adminStatus]);
 
   // Filter events based on search query and whether to show past events
   useEffect(() => {
@@ -230,10 +251,21 @@ const EventsList = () => {
     };
   };
 
-  // Inside the component, add a helper function to check if the faculty created the event
-  const canEditEvent = (event) => {
+  // Add a function to check if user can edit/delete an event
+  const canManageEvent = (event) => {
     const facultyId = localStorage.getItem('facultyId');
-    return event.faculty === facultyId;
+    
+    // If faculty created the event, they can manage it
+    if (event.faculty === facultyId) {
+      return true;
+    }
+    
+    // If they're a sub-admin, check permissions from state
+    if (adminStatus?.isAdmin && adminStatus.adminRole === 'sub') {
+      return eventPermissions[event.id];
+    }
+    
+    return false;
   };
 
   // Helper to check if an event is in the past
@@ -253,8 +285,45 @@ const EventsList = () => {
   };
 
   const handleDownloadQrCode = (eventId) => {
-    // Use the dynamic API URL helper instead of hardcoded URL
-    window.open(getApiUrl(`/api/event/${eventId}/qr/`), '_blank');
+    // Fix the API endpoint to match the backend URL structure
+    window.open(`${getApiUrl(`/api/events/${eventId}/generate-qr/`)}`, '_blank');
+  };
+
+  const handleOpenDeleteDialog = (event, e) => {
+    if (e) {
+      e.stopPropagation(); // Prevent event click when clicking delete button
+    }
+    setEventToDelete(event);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setEventToDelete(null);
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    
+    setLoading(true);
+    try {
+      const facultyId = localStorage.getItem('facultyId');
+      
+      await axios.delete(`/api/events/${eventToDelete.id}/`, {
+        params: { faculty_id: facultyId }
+      });
+      
+      // Remove the deleted event from state
+      setAllEvents(prev => prev.filter(event => event.id !== eventToDelete.id));
+      
+      setError(null);
+      handleCloseDeleteDialog();
+    } catch (err) {
+      console.error('Error deleting event:', err);
+      setError('Failed to delete the event. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -437,7 +506,7 @@ const EventsList = () => {
                             ? '4px solid #999' 
                             : isToday 
                               ? '4px solid #4CAF50' 
-                              : canEditEvent(event) 
+                              : canManageEvent(event) 
                                 ? '4px solid #DEA514' 
                                 : '4px solid #90caf9', // Different color for others' events
                         }}
@@ -455,7 +524,7 @@ const EventsList = () => {
                             />
                           )}
                           
-                          {canEditEvent(event) && (
+                          {event.faculty === localStorage.getItem('facultyId') ? (
                             <Chip 
                               label="Your Event" 
                               size="small" 
@@ -465,7 +534,17 @@ const EventsList = () => {
                                 color: 'white',
                               }} 
                             />
-                          )}
+                          ) : canManageEvent(event) ? (
+                            <Chip 
+                              label="Admin Access" 
+                              size="small" 
+                              sx={{ 
+                                mb: 1,
+                                bgcolor: '#4a148c',  // Purple for admin access
+                                color: 'white',
+                              }} 
+                            />
+                          ) : null}
                         </Box>
                         
                         <Typography variant="h6" sx={{ mb: 2, color: '#2C2C2C' }}>
@@ -516,25 +595,43 @@ const EventsList = () => {
                           </Button>
                           
                           <Box>
-                            {/* Only show edit button if the faculty created this event */}
-                            {canEditEvent(event) && (
-                              <Button
-                                size="small"
-                                startIcon={<EditIcon />}
-                                onClick={() => navigate(`/faculty/events/${event.id}/edit`)}
-                                sx={{ color: '#666', mr: 1 }}
-                              >
-                                Edit
-                              </Button>
+                            {/* Show manage buttons if user created the event or is a sub-admin with permission */}
+                            {canManageEvent(event) && (
+                              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={<EditIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/faculty/events/${event.id}/edit`);
+                                  }}
+                                  sx={{
+                                    borderColor: '#DEA514',
+                                    color: '#DEA514',
+                                    '&:hover': {
+                                      borderColor: '#B88A10',
+                                      color: '#B88A10',
+                                      bgcolor: 'rgba(222, 165, 20, 0.04)',
+                                    },
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  startIcon={<DeleteIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDeleteDialog(event, e);
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </Box>
                             )}
-                            
-                            <Button
-                              size="small"
-                              onClick={() => handleAssignEvent(event)}
-                              sx={{ color: '#DEA514' }}
-                            >
-                              Assign to Classes
-                            </Button>
                           </Box>
                         </Box>
                       </Paper>
@@ -575,14 +672,13 @@ const EventsList = () => {
                   return classItem ? classItem.name : '';
                 }).join(', ');
               }}
-            >
+            ></Select>
               {classes.map((classItem) => (
                 <MenuItem key={classItem.id} value={classItem.id}>
                   <Checkbox checked={selectedClasses.indexOf(classItem.id) > -1} />
                   <ListItemText primary={classItem.name} />
                 </MenuItem>
               ))}
-            </Select>
           </FormControl>
         </DialogContent>
         <DialogActions>
@@ -593,6 +689,28 @@ const EventsList = () => {
             sx={{ color: '#DEA514' }}
           >
             Assign
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="delete-dialog-title"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Delete Event
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the event "{eventToDelete?.name}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
+          <Button onClick={handleDeleteEvent} color="error" autoFocus>
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

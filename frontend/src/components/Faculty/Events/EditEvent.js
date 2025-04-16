@@ -20,15 +20,17 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  CircularProgress,
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from '../../../utils/axios';
+import { canEditEvent } from '../../../utils/adminUtils';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 
-const EditEvent = () => {
+const EditEvent = ({ adminStatus }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
@@ -39,6 +41,8 @@ const EditEvent = () => {
   const [success, setSuccess] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [checkingPermission, setCheckingPermission] = useState(true);
 
   const [eventData, setEventData] = useState({
     name: '',
@@ -58,56 +62,93 @@ const EditEvent = () => {
   }
 
   useEffect(() => {
-    const fetchEventDetails = async () => {
+    const fetchEventAndCheckPermission = async () => {
       try {
         setLoading(true);
-        // Fetch event details
-        const response = await axios.get(`/api/events/${id}/`);
-        const event = response.data;
-
-        // Check if logged in faculty created this event
+        setCheckingPermission(true);
+        
+        // Get the current logged in faculty ID
         const facultyId = localStorage.getItem('facultyId');
-        if (event.faculty !== facultyId) {
-          setUnauthorized(true);
-          setError('You are not authorized to edit this event');
+        
+        if (!facultyId) {
+          setError('You must be logged in to edit events');
           setLoading(false);
           return;
         }
-
+        
+        console.log("EditEvent - Faculty ID:", facultyId);
+        console.log("EditEvent - Admin status:", adminStatus);
+        
+        // Fetch the event details
+        const eventResponse = await axios.get(`/api/events/${id}/`);
+        const eventData = eventResponse.data;
+        
+        console.log("EditEvent - Event data:", eventData);
+        
+        // Make sure we have valid school ID for the event
+        if (!eventData.school) {
+          console.error("Event doesn't have a school ID");
+          setError("This event doesn't have proper school information");
+          setLoading(false);
+          setCheckingPermission(false);
+          return;
+        }
+        
+        // Check if the faculty has permission to edit this event
+        const permission = await canEditEvent(
+          eventData.school,
+          facultyId,
+          eventData.faculty,
+          adminStatus
+        );
+        
+        console.log("EditEvent - Permission result:", permission);
+        
+        setHasPermission(permission);
+        
+        if (!permission) {
+          setError('You do not have permission to edit this event');
+          setLoading(false);
+          setCheckingPermission(false);
+          return;
+        }
+        
         // Format date and time for form
-        const eventDate = new Date(event.date);
+        const eventDate = new Date(eventData.date);
         const formattedDate = eventDate.toISOString().split('T')[0];
         const formattedTime = eventDate.toTimeString().slice(0, 5);
 
         // Format end time if available
         let formattedEndTime = '';
-        if (event.end_time) {
-          const endDate = new Date(event.end_time);
+        if (eventData.end_time) {
+          const endDate = new Date(eventData.end_time);
           formattedEndTime = endDate.toTimeString().slice(0, 5);
         }
 
         setEventData({
-          name: event.name || '',
-          description: event.description || '',
+          name: eventData.name || '',
+          description: eventData.description || '',
           date: formattedDate,
           time: formattedTime,
           endTime: formattedEndTime,
-          location: event.location || '',
-          checkin_before_minutes: event.checkin_before_minutes || 15,
-          checkin_after_minutes: event.checkin_after_minutes || 15,
+          location: eventData.location || '',
+          checkin_before_minutes: eventData.checkin_before_minutes || 15,
+          checkin_after_minutes: eventData.checkin_after_minutes || 15,
           faculty: localStorage.getItem('facultyId'),
         });
 
         setLoading(false);
+        setCheckingPermission(false);
       } catch (err) {
         console.error('Error fetching event:', err);
-        setError('Failed to load event details. Please try again.');
+        setError('Failed to load event details');
         setLoading(false);
+        setCheckingPermission(false);
       }
     };
 
-    fetchEventDetails();
-  }, [id]);
+    fetchEventAndCheckPermission();
+  }, [id, adminStatus]);
 
   const handleChange = (field) => (event) => {
     setEventData({
@@ -118,6 +159,12 @@ const EditEvent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!hasPermission) {
+      setError('You do not have permission to edit this event');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -189,26 +236,30 @@ const EditEvent = () => {
     }
   };
 
-  if (unauthorized) {
+  if (loading || checkingPermission) {
     return (
-      <Alert
-        severity="error"
-        sx={{ mt: 4 }}
-        action={
-          <Button color="inherit" size="small" onClick={() => navigate('/faculty/events')}>
-            Back to Events
-          </Button>
-        }
-      >
-        You are not authorized to edit this event
-      </Alert>
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+        <CircularProgress sx={{ color: '#DEA514' }} />
+      </Box>
     );
   }
 
-  if (loading) {
+  if (!hasPermission) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-        <Typography>Loading event details...</Typography>
+      <Box sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error || "You don't have permission to edit this event"}
+        </Alert>
+        <Button
+          variant="contained"
+          onClick={() => navigate('/faculty/events')}
+          sx={{
+            bgcolor: '#DEA514',
+            '&:hover': { bgcolor: '#B88A10' },
+          }}
+        >
+          Back to Events
+        </Button>
       </Box>
     );
   }
