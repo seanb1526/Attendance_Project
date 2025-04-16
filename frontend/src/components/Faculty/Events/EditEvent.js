@@ -189,16 +189,16 @@ const EditEvent = ({ adminStatus }) => {
         date: dateTime,
         end_time: endDateTime, // Make sure we're sending this even if null
         location: eventData.location,
-        faculty: facultyId,
+        faculty: eventData.faculty, // Keep the original creator
         school: schoolId,
         checkin_before_minutes: eventData.checkin_before_minutes,
         checkin_after_minutes: eventData.checkin_after_minutes,
       };
 
-      console.log('Updating event with payload:', eventPayload); // Debug log
+      console.log('Updating event with payload:', eventPayload);
 
       // Make the API request to update the event
-      await axios.put(`/api/events/${id}/?faculty_id=${facultyId}`, eventPayload);
+      const response = await axios.put(`/api/events/${id}/?faculty_id=${facultyId}`, eventPayload);
 
       setSuccess('Event updated successfully');
       // Optionally redirect after success
@@ -207,7 +207,12 @@ const EditEvent = ({ adminStatus }) => {
       }, 2000);
     } catch (err) {
       console.error('Error updating event:', err);
-      setError(err.response?.data?.message || 'Failed to update event. Please try again.');
+      // Enhance error handling
+      if (err.response?.status === 403) {
+        setError('You do not have permission to edit this event. This may be due to a permissions issue with your administrator account.');
+      } else {
+        setError(err.response?.data?.error || err.response?.data?.message || 'Failed to update event. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -229,7 +234,11 @@ const EditEvent = ({ adminStatus }) => {
       }, 1500);
     } catch (err) {
       console.error('Error deleting event:', err);
-      setError(err.response?.data?.message || 'Failed to delete event. Please try again.');
+      if (err.response?.status === 403) {
+        setError('You do not have permission to delete this event. This may be due to a permissions issue with your administrator account.');
+      } else {
+        setError(err.response?.data?.error || err.response?.data?.message || 'Failed to delete event. Please try again.');
+      }
       setConfirmDelete(false);
     } finally {
       setLoading(false);

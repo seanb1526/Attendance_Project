@@ -398,29 +398,165 @@ class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
 
     def perform_update(self, serializer):
-        # Ensure only the creator can update
+        # Get the event and faculty ID
         event = self.get_object()
-        request_faculty_id = self.request.user.id  # If using token auth
-        # For non-token auth, you might need to extract from query params or request data
         faculty_id = self.request.query_params.get('faculty_id')
         if not faculty_id:
             faculty_id = self.request.data.get('faculty')
 
-        if str(event.faculty.id) != str(faculty_id):
+        # Check permission: is creator OR is admin
+        has_permission = False
+        
+        # Check if faculty is event creator
+        is_creator = str(event.faculty.id) == str(faculty_id)
+        if is_creator:
+            has_permission = True
+            
+        # Check if faculty is admin with appropriate permissions
+        if not has_permission:
+            try:
+                faculty = Faculty.objects.get(id=faculty_id)
+                faculty_email = faculty.email
+                
+                # Try to find admin account with this email
+                admin = Admin.objects.filter(email=faculty_email).first()
+                
+                if admin and admin.role in ['master', 'co']:
+                    # Master and co-admins can edit any event
+                    has_permission = True
+                elif admin and admin.role == 'sub':
+                    # Sub-admins can only edit events in their school
+                    admin_school_id = faculty.school.id
+                    event_school_id = event.school.id
+                    if str(admin_school_id) == str(event_school_id):
+                        has_permission = True
+            except Exception as e:
+                print(f"Error checking admin permissions: {str(e)}")
+
+        # Raise permission denied if no permission
+        if not has_permission:
             raise PermissionDenied("You don't have permission to edit this event")
 
         serializer.save()
 
     def perform_destroy(self, instance):
-        # Ensure only the creator can delete
-        request_faculty_id = self.request.query_params.get('faculty_id')
-        if not request_faculty_id:
-            request_faculty_id = self.request.data.get('faculty')
+        # Get faculty ID
+        faculty_id = self.request.query_params.get('faculty_id')
+        if not faculty_id:
+            faculty_id = self.request.data.get('faculty')
 
-        if str(instance.faculty.id) != str(request_faculty_id):
+        # Check permission: is creator OR is admin
+        has_permission = False
+        
+        # Check if faculty is event creator
+        is_creator = str(instance.faculty.id) == str(faculty_id)
+        if is_creator:
+            has_permission = True
+            
+        # Check if faculty is admin with appropriate permissions
+        if not has_permission:
+            try:
+                faculty = Faculty.objects.get(id=faculty_id)
+                faculty_email = faculty.email
+                
+                # Try to find admin account with this email
+                admin = Admin.objects.filter(email=faculty_email).first()
+                
+                if admin and admin.role in ['master', 'co']:
+                    # Master and co-admins can delete any event
+                    has_permission = True
+                elif admin and admin.role == 'sub':
+                    # Sub-admins can only delete events in their school
+                    admin_school_id = faculty.school.id
+                    event_school_id = instance.school.id
+                    if str(admin_school_id) == str(event_school_id):
+                        has_permission = True
+            except Exception as e:
+                print(f"Error checking admin permissions: {str(e)}")
+
+        # Raise permission denied if no permission
+        if not has_permission:
             raise PermissionDenied("You don't have permission to delete this event")
 
         instance.delete()
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def event_detail(request, pk):
+    """
+    Retrieve, update or delete an event.
+    """
+    try:
+        event = Event.objects.get(pk=pk)
+    except Event.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    # Get the faculty ID from the request
+    faculty_id = request.GET.get('faculty_id')
+    
+    if not faculty_id:
+        return Response({"error": "Faculty ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'GET':
+        serializer = EventSerializer(event)
+        return Response(serializer.data)
+
+    # For update and delete operations, check permissions
+    elif request.method == 'PUT' or request.method == 'DELETE':
+        # Check if faculty is event creator
+        is_creator = str(event.faculty.id) == str(faculty_id)
+        
+        # Check if faculty is admin
+        is_admin = False
+        admin_school_id = None
+        
+        # Get the faculty's email to check for admin status
+        try:
+            faculty = Faculty.objects.get(id=faculty_id)
+            faculty_email = faculty.email
+            
+            # Check if the faculty is also an admin
+            try:
+                admin = Admin.objects.filter(email=faculty_email).first()
+                if admin and admin.role in ['master', 'co', 'sub']:
+                    is_admin = True
+                    
+                    # For sub-admin, check if they belong to same school as event
+                    if admin.role == 'sub':
+                        admin_school_id = faculty.school.id  # The school ID of the sub-admin faculty
+                        
+            except Exception as e:
+                print(f"Error checking admin status: {str(e)}")
+                pass
+                
+        except Exception as e:
+            print(f"Error getting faculty email: {str(e)}")
+            pass
+            
+        # Permission check
+        has_permission = is_creator  # Faculty always can edit/delete own events
+        
+        # Admin permission logic
+        if not has_permission and is_admin:
+            if admin.role in ['master', 'co']:  # Master and co-admins can edit any event
+                has_permission = True
+            elif admin.role == 'sub' and str(admin_school_id) == str(event.school.id):  # Sub-admins can only edit events from their school
+                has_permission = True
+        
+        # Return 403 Forbidden if no permission
+        if not has_permission:
+            return Response({"error": "You do not have permission to modify this event"}, status=status.HTTP_403_FORBIDDEN)
+            
+        # Process the request
+        if request.method == 'PUT':
+            serializer = EventSerializer(event, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        elif request.method == 'DELETE':
+            event.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
 # ---------------- Class ViewSet ----------------
 class ClassViewSet(viewsets.ModelViewSet):

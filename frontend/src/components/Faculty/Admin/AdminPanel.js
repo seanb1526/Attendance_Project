@@ -142,7 +142,11 @@ const AdminPanel = ({ adminId, adminRole }) => {
       handleCloseDeleteDialog();
     } catch (err) {
       console.error('Error deleting event:', err);
-      setError('Failed to delete event. Please try again.');
+      if (err.response?.status === 403) {
+        setError('You do not have permission to delete this event. This may be due to a permissions issue with your administrator account.');
+      } else {
+        setError(err.response?.data?.error || 'Failed to delete event. Please try again.');
+      }
     }
   };
 

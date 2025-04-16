@@ -53,21 +53,18 @@ const EventsList = ({ adminStatus }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
 
-  // Add new state variables for data fetching
   const [events, setEvents] = useState([]);
-  const [allEvents, setAllEvents] = useState([]); // Store all events for filtering
+  const [allEvents, setAllEvents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPastEvents, setShowPastEvents] = useState(false);
 
-  // Fetch events and classes on component mount
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Get school ID from localStorage
         const schoolId = localStorage.getItem('schoolId');
         const facultyId = localStorage.getItem('facultyId');
         
@@ -75,21 +72,16 @@ const EventsList = ({ adminStatus }) => {
           throw new Error('School ID not found. You may need to log in again.');
         }
         
-        // Fetch events with school filter
         const eventsResponse = await axios.get(`/api/events/?school=${schoolId}`);
-        
-        // Sort events by date (nearest first)
         const sortedEvents = [...eventsResponse.data].sort((a, b) => {
           return new Date(a.date) - new Date(b.date);
         });
         
         setAllEvents(sortedEvents);
         
-        // Fetch classes for this school AND faculty
         const classesResponse = await axios.get(`/api/classes/?school=${schoolId}&faculty=${facultyId}`);
         setClasses(classesResponse.data);
 
-        // Determine editing permissions for each event
         if (adminStatus?.isAdmin) {
           const permissions = {};
           for (const event of sortedEvents) {
@@ -119,44 +111,34 @@ const EventsList = ({ adminStatus }) => {
     fetchData();
   }, [adminStatus]);
 
-  // Filter events based on search query and whether to show past events
   useEffect(() => {
-    // Apply date filtering
     const now = new Date();
-    // Set time to beginning of the day to include same-day events
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    // Get school ID and faculty ID from localStorage
     const schoolId = localStorage.getItem('schoolId');
     const facultyId = localStorage.getItem('facultyId');
     
-    // First filter by school ID to ensure we only show events from this school
     let filteredEvents = allEvents;
     
     if (schoolId) {
-      // Use string comparison to handle potential type differences
       filteredEvents = allEvents.filter(event => 
         String(event.school) === String(schoolId)
       );
     }
     
-    // Then filter by date if not showing past events
     if (!showPastEvents) {
       filteredEvents = filteredEvents.filter(event => {
         const eventDate = new Date(event.date);
-        // Keep events from today or future days
         return eventDate >= today;
       });
     }
     
-    // Apply search filter
     if (searchQuery.trim() !== '') {
       filteredEvents = filteredEvents.filter(event => 
         event.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     
-    // Separate events into two groups: faculty events and other events
     let facultyEvents = [];
     let otherEvents = [];
     
@@ -168,17 +150,12 @@ const EventsList = ({ adminStatus }) => {
       }
     });
     
-    // Sort each group by nearest date
     facultyEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
     otherEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    // Combine the sorted groups
     setEvents([...facultyEvents, ...otherEvents]);
     
-    // Store information about whether an event is a faculty event
-    // We'll use this to render the divider later
     if (facultyEvents.length > 0 && otherEvents.length > 0) {
-      // Store the index of the first non-faculty event
       sessionStorage.setItem('dividerIndex', facultyEvents.length);
     } else {
       sessionStorage.removeItem('dividerIndex');
@@ -202,7 +179,6 @@ const EventsList = ({ adminStatus }) => {
 
   const handleAssignSubmit = async () => {
     try {
-      // Create an array of promises for each class assignment
       const assignmentPromises = selectedClasses.map(classId => 
         axios.post('/api/class-events/', {
           class_instance: classId,
@@ -210,16 +186,11 @@ const EventsList = ({ adminStatus }) => {
         })
       );
       
-      // Wait for all assignments to complete
       await Promise.all(assignmentPromises);
       
-      // Get school ID for refreshing events
       const schoolId = localStorage.getItem('schoolId');
       
-      // Refresh the events list to show updated assignments
       const response = await axios.get(`/api/events/?school=${schoolId}`);
-      
-      // Sort events by date (nearest first)
       const sortedEvents = [...response.data].sort((a, b) => {
         return new Date(a.date) - new Date(b.date);
       });
@@ -230,17 +201,14 @@ const EventsList = ({ adminStatus }) => {
       setSelectedClasses([]);
     } catch (err) {
       console.error('Error assigning event:', err);
-      // You could add error handling here
     }
   };
 
-  // Handle change for multi-select
   const handleClassSelectionChange = (event) => {
     const { value } = event.target;
     setSelectedClasses(value);
   };
 
-  // Helper function to format date and time
   const formatDateTime = (isoString) => {
     if (!isoString) return { date: 'TBD', time: 'TBD' };
     
@@ -251,16 +219,13 @@ const EventsList = ({ adminStatus }) => {
     };
   };
 
-  // Add a function to check if user can edit/delete an event
   const canManageEvent = (event) => {
     const facultyId = localStorage.getItem('facultyId');
     
-    // If faculty created the event, they can manage it
     if (event.faculty === facultyId) {
       return true;
     }
     
-    // If they're a sub-admin, check permissions from state
     if (adminStatus?.isAdmin && adminStatus.adminRole === 'sub') {
       return eventPermissions[event.id];
     }
@@ -268,14 +233,12 @@ const EventsList = ({ adminStatus }) => {
     return false;
   };
 
-  // Helper to check if an event is in the past
   const isEventPast = (eventDate) => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Beginning of today
+    today.setHours(0, 0, 0, 0);
     return new Date(eventDate) < today;
   };
 
-  // Helper to check if an event is today
   const isEventToday = (eventDate) => {
     const today = new Date();
     const eventDay = new Date(eventDate);
@@ -285,13 +248,12 @@ const EventsList = ({ adminStatus }) => {
   };
 
   const handleDownloadQrCode = (eventId) => {
-    // Fix the API endpoint to match the backend URL structure
     window.open(`${getApiUrl(`/api/events/${eventId}/generate-qr/`)}`, '_blank');
   };
 
   const handleOpenDeleteDialog = (event, e) => {
     if (e) {
-      e.stopPropagation(); // Prevent event click when clicking delete button
+      e.stopPropagation();
     }
     setEventToDelete(event);
     setDeleteDialogOpen(true);
@@ -313,7 +275,6 @@ const EventsList = ({ adminStatus }) => {
         params: { faculty_id: facultyId }
       });
       
-      // Remove the deleted event from state
       setAllEvents(prev => prev.filter(event => event.id !== eventToDelete.id));
       
       setError(null);
@@ -362,7 +323,6 @@ const EventsList = ({ adminStatus }) => {
         </Button>
       </Box>
 
-      {/* Search and filter controls */}
       <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           fullWidth
@@ -411,21 +371,18 @@ const EventsList = ({ adminStatus }) => {
         </Box>
       </Box>
 
-      {/* Display loading indicator */}
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress sx={{ color: '#DEA514' }} />
         </Box>
       )}
 
-      {/* Display error message if any */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
 
-      {/* Display events */}
       {!loading && !error && (
         <>
           {events.length === 0 ? (
@@ -508,7 +465,7 @@ const EventsList = ({ adminStatus }) => {
                               ? '4px solid #4CAF50' 
                               : canManageEvent(event) 
                                 ? '4px solid #DEA514' 
-                                : '4px solid #90caf9', // Different color for others' events
+                                : '4px solid #90caf9',
                         }}
                       >
                         <Box sx={{ mb: 1, display: 'flex', gap: 1 }}>
@@ -540,7 +497,7 @@ const EventsList = ({ adminStatus }) => {
                               size="small" 
                               sx={{ 
                                 mb: 1,
-                                bgcolor: '#4a148c',  // Purple for admin access
+                                bgcolor: '#4a148c',
                                 color: 'white',
                               }} 
                             />
@@ -584,55 +541,76 @@ const EventsList = ({ adminStatus }) => {
                           {event.description || 'No description available'}
                         </Typography>
 
-                        <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: '1px solid #eee', justifyContent: 'space-between' }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          mt: 'auto', 
+                          pt: 2, 
+                          borderTop: '1px solid #eee', 
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
                           <Button
                             size="small"
                             startIcon={<QrCode2Icon />}
-                            sx={{ color: '#666' }}
-                            onClick={() => handleDownloadQrCode(event.id)}
+                            sx={{ 
+                              color: '#666',
+                              '&:hover': {
+                                backgroundColor: 'rgba(102, 102, 102, 0.04)'
+                              }
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadQrCode(event.id);
+                            }}
                           >
                             QR Code
                           </Button>
                           
-                          <Box>
-                            {/* Show manage buttons if user created the event or is a sub-admin with permission */}
-                            {canManageEvent(event) && (
-                              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  startIcon={<EditIcon />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/faculty/events/${event.id}/edit`);
-                                  }}
-                                  sx={{
-                                    borderColor: '#DEA514',
-                                    color: '#DEA514',
-                                    '&:hover': {
-                                      borderColor: '#B88A10',
-                                      color: '#B88A10',
-                                      bgcolor: 'rgba(222, 165, 20, 0.04)',
-                                    },
-                                  }}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="error"
-                                  startIcon={<DeleteIcon />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenDeleteDialog(event, e);
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                              </Box>
-                            )}
-                          </Box>
+                          {canManageEvent(event) && (
+                            <Box sx={{ 
+                              display: 'flex', 
+                              gap: 1,
+                              justifyContent: 'flex-end' 
+                            }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<EditIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/faculty/events/${event.id}/edit`);
+                                }}
+                                sx={{
+                                  borderColor: '#DEA514',
+                                  color: '#DEA514',
+                                  '&:hover': {
+                                    borderColor: '#B88A10',
+                                    color: '#B88A10',
+                                    bgcolor: 'rgba(222, 165, 20, 0.04)',
+                                  },
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDeleteDialog(event, e);
+                                }}
+                                sx={{
+                                  '&:hover': {
+                                    bgcolor: 'rgba(211, 47, 47, 0.04)',
+                                  },
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </Box>
+                          )}
                         </Box>
                       </Paper>
                     </Grid>
@@ -644,7 +622,6 @@ const EventsList = ({ adminStatus }) => {
         </>
       )}
 
-      {/* Assign to Classes Dialog */}
       <Dialog 
         open={assignDialogOpen} 
         onClose={() => setAssignDialogOpen(false)}
@@ -693,7 +670,6 @@ const EventsList = ({ adminStatus }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
         onClose={handleCloseDeleteDialog}
