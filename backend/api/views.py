@@ -880,7 +880,7 @@ class ClassEventViewSet(viewsets.ModelViewSet):
 
 @api_view(['GET'])
 def generate_event_qr(request, event_id):
-    """Generate a QR code PDF for an event"""
+    """Generate a QR code PDF for an event with instructions on page 1 and event details on page 2"""
     try:
         # Convert string to UUID if needed
         event_uuid = UUID(event_id)
@@ -902,33 +902,66 @@ def generate_event_qr(request, event_id):
         img_buffer = io.BytesIO()
         img.save(img_buffer)
         img_buffer.seek(0)
+        
         # Create a PDF
         buffer = io.BytesIO()
         pdf = canvas.Canvas(buffer, pagesize=letter)
-        # Add event details to PDF
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawString(1*inch, 10*inch, f"Event: {event.name}")
+        
+        # PAGE 1: Instructions
+        pdf.setFont("Helvetica-Bold", 18)
+        pdf.drawString(1*inch, 10*inch, "TrueAttend - Attendance Instructions")
+        
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(1*inch, 9*inch, "Instructions:")
+        
         pdf.setFont("Helvetica", 12)
+        pdf.drawString(1*inch, 8.5*inch, "1. Print this QR code and display it at the event")
+        pdf.drawString(1*inch, 8.0*inch, "2. Have students scan this code with the ClassAttend web app")
+        pdf.drawString(1*inch, 7.5*inch, "3. Students must be logged in to record attendance")
+        
+        pdf.setFont("Helvetica-Oblique", 10)
+        pdf.drawString(1*inch, 2*inch, "Please see the next page for your event details and QR code.")
+        
+        # Move to page 2
+        pdf.showPage()
+        
+        # PAGE 2: Event info and QR code
+        pdf.setFont("Helvetica-Bold", 18)
+        pdf.drawString(1*inch, 10*inch, "Event Details")
+        
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(1*inch, 9.5*inch, "Event:")
+        pdf.setFont("Helvetica", 14)
+        pdf.drawString(2*inch, 9.5*inch, event.name)
+        
         # Format and display date and time
         event_date = event.date.strftime('%B %d, %Y')
         start_time = event.date.strftime('%I:%M %p')
-        pdf.drawString(1*inch, 9.5*inch, f"Date: {event_date}")
+        
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(1*inch, 9*inch, "Date:")
+        pdf.setFont("Helvetica", 14)
+        pdf.drawString(2*inch, 9*inch, event_date)
+        
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(1*inch, 8.5*inch, "Time:")
+        pdf.setFont("Helvetica", 14)
         if event.end_time:
             end_time = event.end_time.strftime('%I:%M %p')
-            pdf.drawString(1*inch, 9.0*inch, f"Time: {start_time} - {end_time}")
+            pdf.drawString(2*inch, 8.5*inch, f"{start_time} - {end_time}")
         else:
-            pdf.drawString(1*inch, 9.0*inch, f"Time: {start_time}")
+            pdf.drawString(2*inch, 8.5*inch, start_time)
+        
         if event.location:
-            pdf.drawString(1*inch, 8.5*inch, f"Location: {event.location}")
-        pdf.setFont("Helvetica-Bold", 14)
-        pdf.drawString(1*inch, 8.0*inch, "Instructions:")
-        pdf.setFont("Helvetica", 12)
-        pdf.drawString(1*inch, 7.5*inch, "1. Print this QR code and display it in class")
-        pdf.drawString(1*inch, 7.0*inch, "2. Have students scan this code with the ClassAttend app")
-        pdf.drawString(1*inch, 6.5*inch, "3. Students must be logged in to record attendance")
-        # Add QR code to PDF
+            pdf.setFont("Helvetica-Bold", 14)
+            pdf.drawString(1*inch, 8*inch, "Location:")
+            pdf.setFont("Helvetica", 14)
+            pdf.drawString(2*inch, 8*inch, event.location)
+        
+        # Add QR code to PDF - centered on page
         img_pil = Image.open(img_buffer)
-        pdf.drawInlineImage(img_pil, 2.5*inch, 2*inch, width=4*inch, height=4*inch)
+        pdf.drawInlineImage(img_pil, 2.5*inch, 3*inch, width=4*inch, height=4*inch)
+        
         pdf.save()
         buffer.seek(0)
         response = HttpResponse(buffer, content_type='application/pdf')
