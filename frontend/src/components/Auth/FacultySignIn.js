@@ -40,20 +40,27 @@ const FacultySignIn = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setLoading(true);
     
     try {
+      // Debug - log what's being sent
+      console.log('Sending faculty sign-in request:', {
+        email: email,
+        remember_me: rememberMe
+      });
+      
+      // Make the API call to sign in
       const response = await axios.post('/api/faculty/signin/', {
         email: email,
         remember_me: rememberMe
       });
       
-      setSuccess('Please check your email for the sign-in link.');
-      setEmail('');
-      setLoading(false); // Reset loading state on success
+      // Handle successful response
+      setSuccess(response.data.message);
     } catch (error) {
+      console.error('Sign in error:', error);
       setError(error.response?.data?.error || 'Sign in failed. Please try again.');
+    } finally {
       setLoading(false);
     }
   };

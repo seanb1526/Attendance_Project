@@ -322,6 +322,76 @@ class FacultyViewSet(viewsets.ModelViewSet):
         # Finally, delete the faculty account
         instance.delete()
 
+# ---------------- Faculty SignIn ----------------
+@api_view(['POST'])
+def faculty_signin(request):
+    """Faculty sign in with email"""
+    email = request.data.get('email')
+    remember_me = request.data.get('remember_me', False)
+
+    try:
+        faculty = Faculty.objects.get(email=email)
+
+        if not faculty.email_verified:
+            return Response({
+                'error': 'Please verify your email address first'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
+        token_expiration = timedelta(days=30) if remember_me else timedelta(days=1)
+
+        # Generate authentication token
+        token = jwt.encode({
+            'faculty_id': str(faculty.id),
+            'exp': datetime.utcnow() + token_expiration
+        }, settings.SECRET_KEY, algorithm='HS256')
+
+        # Send signin link via email
+        signin_url = f"{settings.FRONTEND_URL}/verify-email?token={token}&type=faculty"
+        html_message = f"""
+        <h3>Faculty Sign In</h3>
+        <p>Click the button below to sign in to your ClassAttend account:</p>
+        <p><a href="{signin_url}" style="background-color: #DEA514; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Sign In</a></p>
+        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+        <p>{signin_url}</p>
+        """
+
+        # Add debug logging to see if this part is reached
+        print(f"Attempting to send sign-in email to faculty: {email}")
+        
+        try:
+            send_mail(
+                subject="ClassAttend Faculty Sign In Link",
+                message=f"Click the following link to sign in: {signin_url}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[faculty.email],
+                html_message=html_message,
+                fail_silently=False,  # Set to False to see errors
+            )
+            print(f"Email sent successfully to {email}")
+        except Exception as email_error:
+            # Log specific email sending error
+            print(f"ERROR sending email to {email}: {str(email_error)}")
+            traceback.print_exc()
+            return Response({
+                'error': f'Failed to send sign-in email: {str(email_error)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            'message': 'Please check your email for the sign-in link.'
+        })
+
+    except Faculty.DoesNotExist:
+        return Response({
+            'error': 'No faculty account found with this email address'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f"General error in faculty_signin: {str(e)}")
+        traceback.print_exc()
+        return Response({
+            'error': f'Sign in error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # ---------------- Event ViewSet ----------------
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
@@ -440,62 +510,6 @@ def register_faculty(request):
                 'error': f'Registration error: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# ---------------- Faculty SignIn ----------------
-@api_view(['POST'])
-def faculty_signin(request):
-    email = request.data.get('email')
-    remember_me = request.data.get('remember_me', False)
-
-    try:
-        faculty = Faculty.objects.get(email=email)
-
-        if not faculty.email_verified:
-            return Response({
-                'error': 'Please verify your email address first'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
-        token_expiration = timedelta(days=30) if remember_me else timedelta(days=1)
-
-        # Generate authentication token
-        token = jwt.encode({
-            'faculty_id': str(faculty.id),
-            'exp': datetime.utcnow() + token_expiration
-        }, settings.SECRET_KEY, algorithm='HS256')
-
-        # Send signin link via email
-        signin_url = f"{settings.FRONTEND_URL}/verify-email?token={token}&type=faculty"
-        html_message = f"""
-        <h3>Faculty Sign In</h3>
-        <p>Click the button below to sign in to your ClassAttend account:</p>
-        <p><a href="{signin_url}" style="background-color: #DEA514; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Sign In</a></p>
-        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-        <p>{signin_url}</p>
-        """
-
-        send_mail(
-            subject="ClassAttend Faculty Sign In Link",
-            message=f"Click the following link to sign in: {signin_url}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[faculty.email],
-            html_message=html_message,
-            fail_silently=False,
-        )
-
-        return Response({
-            'message': 'Please check your email for the sign-in link.'
-        })
-
-    except Faculty.DoesNotExist:
-        return Response({
-            'error': 'No faculty account found with this email address'
-        }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        traceback.print_exc()
-        return Response({
-            'error': f'Sign in error: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ---------------- Create Class ----------------
 @api_view(['POST'])
