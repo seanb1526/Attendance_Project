@@ -67,7 +67,6 @@ const FacultyDashboard = () => {
           
           // Check if faculty is also an admin
           const adminStatus = await checkFacultyAdminStatus(facultyId);
-          console.log("FacultyDashboard - Faculty admin status:", adminStatus);
           
           setIsAdmin(adminStatus.isAdmin);
           setAdminRole(adminStatus.adminRole);
@@ -237,9 +236,6 @@ const FacultyDashboard = () => {
       </Box>
     </Box>
   );
-
-  // Include debugging output for the route passing
-  console.log("FacultyDashboard - Passing admin status to routes:", { isAdmin, adminRole, adminId });
 
   return (
     <Box sx={{ display: 'flex' }}>

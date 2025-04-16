@@ -12,35 +12,26 @@ const instance = axios.create({
 // Use relative URLs to make it work regardless of deployment
 instance.defaults.headers.common['Content-Type'] = 'application/json';
 
-// Add request interceptor for debugging
+// Add request interceptor 
 instance.interceptors.request.use(
   config => {
-    console.log('Request being sent:', {
-      url: config.url,
-      method: config.method,
-      data: config.data,
-      headers: config.headers
-    });
+    // Console logs removed for production
     return config;
   },
   error => {
-    console.error('Request error:', error);
+    // Console logs removed for production
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor for debugging
+// Add response interceptor 
 instance.interceptors.response.use(
   response => {
-    console.log('Response received:', {
-      url: response.config.url,
-      status: response.status,
-      data: response.data
-    });
+    // Console logs removed for production
     return response;
   },
   error => {
-    console.error('Response error:', error);
+    // Console logs removed for production
     return Promise.reject(error);
   }
 );
