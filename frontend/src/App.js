@@ -7,14 +7,17 @@ import Home from './components/Home';
 import AuthLanding from './components/Auth/AuthLanding';
 import StudentAuth from './components/Auth/StudentAuth';
 import FacultyAuth from './components/Auth/FacultyAuth';
+import AdminAuth from './components/Auth/AdminAuth';
 import StudentDashboard from './components/Student/StudentDashboard';
 import FacultyDashboard from './components/Faculty/FacultyDashboard';
+import AdminDashboard from './components/Admin/AdminDashboard';
 import About from './components/About/About';
 import StudentRegister from './components/Auth/StudentRegister';
 import EmailVerification from './components/Auth/EmailVerification';
 import StudentSignIn from './components/Auth/StudentSignIn';
 import FacultyRegister from './components/Auth/FacultyRegister';
 import FacultySignIn from './components/Auth/FacultySignIn';
+import AdminSignIn from './components/Auth/AdminSignIn';
 import QRScanner from './components/Student/QRScanner';
 import AttendEvent from './components/Student/AttendEvent';
 import StudentProtectedRoute from './components/Auth/ProtectedRoute';
@@ -99,11 +102,20 @@ const ProtectedRoute = ({ children, requiredUserType = null }) => {
       // Redirect to student sign in
       return <Navigate to="/auth/student/signin" replace />;
     }
+  } else if (requiredUserType === "admin") {
+    // For admin routes, check if adminId exists
+    const isAdminAuthenticated = localStorage.getItem('adminId') !== null;
+
+    if (!isAdminAuthenticated) {
+      // Redirect to admin sign in
+      return <Navigate to="/auth/admin/signin" replace />;
+    }
   } else {
     // For generic routes requiring authentication
     const isAuthenticated = 
       localStorage.getItem('facultyId') !== null || 
-      localStorage.getItem('studentId') !== null;
+      localStorage.getItem('studentId') !== null ||
+      localStorage.getItem('adminId') !== null;
     
     if (!isAuthenticated) {
       // Redirect to auth landing
@@ -129,10 +141,12 @@ function App() {
                   <Route path="/" element={<AuthLanding />} />
                   <Route path="/student" element={<StudentAuth />} />
                   <Route path="/faculty" element={<FacultyAuth />} />
+                  <Route path="/admin" element={<AdminAuth />} />
                   <Route path="/student/signin" element={<StudentSignIn />} />
                   <Route path="/student/register" element={<StudentRegister />} />
                   <Route path="/faculty/signin" element={<FacultySignIn />} />
                   <Route path="/faculty/register" element={<FacultyRegister />} />
+                  <Route path="/admin/signin" element={<AdminSignIn />} />
                 </Routes>
               </>
             } />
@@ -141,6 +155,14 @@ function App() {
               element={
                 <ProtectedRoute requiredUserType="faculty">
                   <FacultyDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/*" 
+              element={
+                <ProtectedRoute requiredUserType="admin">
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />

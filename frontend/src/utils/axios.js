@@ -29,4 +29,20 @@ instance.interceptors.request.use(
   }
 );
 
+// Add response interceptor for debugging
+instance.interceptors.response.use(
+  response => {
+    console.log('Response received:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
+  error => {
+    console.error('Response error:', error);
+    return Promise.reject(error);
+  }
+);
+
 export default instance;

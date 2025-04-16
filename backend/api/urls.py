@@ -6,13 +6,14 @@ from django.http import JsonResponse
 router = DefaultRouter()
 router.register(r'schools', views.SchoolViewSet)
 router.register(r'students', views.StudentViewSet)
-router.register(r'facultys', views.FacultyViewSet)
+router.register(r'faculty', views.FacultyViewSet)
 router.register(r'events', views.EventViewSet)
 router.register(r'classes', views.ClassViewSet)
 router.register(r'attendance', views.AttendanceViewSet)
 router.register(r'class-events', views.ClassEventViewSet)
-router.register(r'class-students', views.ClassStudentViewSet)  # Add this line
+router.register(r'class-students', views.ClassStudentViewSet)
 router.register(r'pending-students', views.PendingStudentViewSet)
+router.register(r'admins', views.AdminViewSet)  # Add this line
 
 # Simple database connection test endpoint
 def db_connection_test(request):
@@ -55,4 +56,11 @@ urlpatterns = [
     path('students/<uuid:student_id>/attendance/', views.get_student_attendance, name='student-attendance'),
     path('api/pending-students/', views.PendingStudentViewSet.as_view({'get': 'list'}), name='pending-students'),
     path('faculty/add-student/', views.faculty_add_student, name='faculty-add-student'),
+    
+    # Admin endpoints
+    path('admin/register/', views.admin_register, name='admin-register'),
+    path('admin/signin/', views.admin_signin, name='admin-signin'),
+    path('admin/profile/<uuid:pk>/', views.admin_profile, name='admin-profile'),
+    path('admin/stats/', views.admin_stats, name='admin-stats'),
+    path('admin/recent-activity/', views.admin_recent_activity, name='admin-recent-activity'),
 ]

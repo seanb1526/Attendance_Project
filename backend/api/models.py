@@ -106,3 +106,24 @@ class Attendance(models.Model):
 
     class Meta:
         unique_together = ('student', 'event')
+
+# Admin user model - new
+class Admin(models.Model):
+    ADMIN_ROLES = (
+        ('master', 'Master Admin'),
+        ('co', 'Co-Administrator'),
+        ('sub', 'University Admin'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    role = models.CharField(max_length=10, choices=ADMIN_ROLES, default='sub')
+    school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True)
+    password_hash = models.CharField(max_length=255)  # Hashed password for direct login
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_login = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.get_role_display()})"

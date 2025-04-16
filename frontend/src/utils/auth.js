@@ -14,8 +14,10 @@ export const clearToken = () => {
   localStorage.removeItem('authToken');
   localStorage.removeItem('studentId');
   localStorage.removeItem('facultyId');
+  localStorage.removeItem('adminId');
   localStorage.removeItem('userType');
   localStorage.removeItem('schoolId');
+  localStorage.removeItem('adminRole');
 };
 
 export const getAuthHeaders = () => {
@@ -26,7 +28,9 @@ export const getAuthHeaders = () => {
 export const isAuthenticated = () => {
   return (
     localStorage.getItem('authToken') !== null && 
-    (localStorage.getItem('studentId') !== null || localStorage.getItem('facultyId') !== null)
+    (localStorage.getItem('studentId') !== null || 
+     localStorage.getItem('facultyId') !== null ||
+     localStorage.getItem('adminId') !== null)
   );
 };
 

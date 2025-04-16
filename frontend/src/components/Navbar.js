@@ -33,6 +33,7 @@ const Navbar = () => {
   useEffect(() => {
     const facultyId = localStorage.getItem('facultyId');
     const studentId = localStorage.getItem('studentId');
+    const adminId = localStorage.getItem('adminId');
     
     if (facultyId) {
       setIsAuthenticated(true);
@@ -40,6 +41,9 @@ const Navbar = () => {
     } else if (studentId) {
       setIsAuthenticated(true);
       setUserType('student');
+    } else if (adminId) {
+      setIsAuthenticated(true);
+      setUserType('admin');
     } else {
       setIsAuthenticated(false);
       setUserType(null);
@@ -66,10 +70,13 @@ const Navbar = () => {
     }
   };
 
-  const menuItems = [
-    { text: 'About', path: '/about' },
-    // Remove the old combined sign-in menu item
-  ];
+  const handleAdminClick = () => {
+    if (isAuthenticated && userType === 'admin') {
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/auth/admin');
+    }
+  };
 
   // Define the drawer component
   const drawer = (
@@ -100,6 +107,18 @@ const Navbar = () => {
               primaryTypographyProps={{
                 color: (isAuthenticated && userType === 'faculty') ? '#DEA514' : 'inherit',
                 fontWeight: (isAuthenticated && userType === 'faculty') ? 'bold' : 'normal',
+              }}
+            />
+          </ListItemButton>
+        </ListItem>
+        
+        <ListItem disablePadding>
+          <ListItemButton onClick={handleAdminClick}>
+            <ListItemText 
+              primary={(isAuthenticated && userType === 'admin') ? 'Admin Dashboard' : 'Admin'} 
+              primaryTypographyProps={{
+                color: (isAuthenticated && userType === 'admin') ? '#DEA514' : 'inherit',
+                fontWeight: (isAuthenticated && userType === 'admin') ? 'bold' : 'normal',
               }}
             />
           </ListItemButton>
@@ -189,6 +208,22 @@ const Navbar = () => {
               }}
             >
               {(isAuthenticated && userType === 'faculty') ? 'Faculty Dashboard' : 'Faculty'}
+            </Button>
+            
+            <Button 
+              onClick={handleAdminClick}
+              sx={{ 
+                ml: 2,
+                color: (isAuthenticated && userType === 'admin') ? '#FFFFFF' : '#DEA514',
+                bgcolor: (isAuthenticated && userType === 'admin') ? '#DEA514' : 'transparent',
+                border: '1px solid #DEA514',
+                '&:hover': {
+                  bgcolor: (isAuthenticated && userType === 'admin') ? '#B88A10' : 'rgba(222, 165, 20, 0.04)',
+                  color: (isAuthenticated && userType === 'admin') ? '#FFFFFF' : '#B88A10',
+                }
+              }}
+            >
+              {(isAuthenticated && userType === 'admin') ? 'Admin Dashboard' : 'Admin'}
             </Button>
           </Box>
         )}

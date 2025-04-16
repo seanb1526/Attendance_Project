@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent, PendingStudent
-from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer, StudentSerializer, PendingStudentSerializer, ClassStudentSerializer
+from .models import School, Student, Faculty, Event, Class, Attendance, ClassStudent, ClassEvent, PendingStudent, Admin
+from .serializers import SchoolSerializer, StudentRegistrationSerializer, FacultySerializer, EventSerializer, ClassSerializer, AttendanceSerializer, FacultyRegistrationSerializer, ClassEventSerializer, StudentSerializer, PendingStudentSerializer, ClassStudentSerializer, AdminSerializer, AdminRegistrationSerializer
 from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
@@ -17,6 +17,7 @@ from reportlab.lib.units import inch
 from django.http import HttpResponse
 from uuid import UUID
 from PIL import Image
+from django.contrib.auth.hashers import make_password, check_password
 
 # ---------------- School ViewSet ----------------
 class SchoolViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1101,3 +1102,210 @@ def get_student_attendance(request, student_id):
         return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ---------------- Admin ViewSet ----------------
+class AdminViewSet(viewsets.ModelViewSet):
+    queryset = Admin.objects.all()
+    serializer_class = AdminSerializer
+    
+    def get_queryset(self):
+        queryset = Admin.objects.all()
+        
+        # Filter by role if specified
+        role = self.request.query_params.get('role')
+        if role:
+            queryset = queryset.filter(role=role)
+        
+        # Filter by school if specified
+        school_id = self.request.query_params.get('school')
+        if school_id:
+            queryset = queryset.filter(school=school_id)
+            
+        return queryset
+
+# ---------------- Admin Authentication ----------------
+@api_view(['POST'])
+def admin_register(request):
+    """Register a new administrator - only master admins can do this"""
+    admin_role = request.data.get('role', 'sub')
+    
+    # Validate the requesting admin is authorized to create new admins
+    requester_id = request.data.get('requester_id')
+    try:
+        if requester_id:
+            requester = Admin.objects.get(id=requester_id)
+            # Only master admins can create other admins
+            if requester.role != 'master' and admin_role != 'sub':
+                return Response({
+                    'error': 'Only master administrators can create co-administrators or other master administrators'
+                }, status=status.HTTP_403_FORBIDDEN)
+            # Co-admins can only create sub-admins
+            if requester.role == 'co' and admin_role != 'sub':
+                return Response({
+                    'error': 'Co-administrators can only create university administrators'
+                }, status=status.HTTP_403_FORBIDDEN)
+        else:
+            # First admin creation doesn't require authorization (system setup)
+            if Admin.objects.count() > 0:
+                return Response({
+                    'error': 'Unauthorized admin creation attempt'
+                }, status=status.HTTP_403_FORBIDDEN)
+    except Admin.DoesNotExist:
+        return Response({
+            'error': 'Invalid requester'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    serializer = AdminRegistrationSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            # Hash the password
+            password = serializer.validated_data.pop('password')
+            admin = serializer.save(
+                password_hash=make_password(password)
+            )
+            
+            return Response({
+                'message': 'Administrator account created successfully',
+                'admin_id': str(admin.id),
+                'email': admin.email
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print(f"Error creating admin: {str(e)}")
+            traceback.print_exc()
+            return Response({
+                'error': f'Registration error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def admin_signin(request):
+    """Admin sign in with email and password"""
+    email = request.data.get('email')
+    password = request.data.get('password')
+    remember_me = request.data.get('remember_me', False)
+    
+    if not email or not password:
+        return Response({
+            'error': 'Email and password are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        admin = Admin.objects.get(email=email)
+        
+        # Check password
+        if not check_password(password, admin.password_hash):
+            return Response({
+                'error': 'Invalid credentials'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Update last login time
+        admin.last_login = datetime.utcnow()
+        admin.save()
+        
+        # Token expiration: 30 days if "Remember Me" is selected, otherwise 24 hours
+        token_expiration = timedelta(days=30) if remember_me else timedelta(hours=24)
+        
+        # Generate token
+        token_payload = {
+            'admin_id': str(admin.id),
+            'email': admin.email,
+            'role': admin.role,
+            'exp': datetime.utcnow() + token_expiration
+        }
+        
+        if admin.school:
+            token_payload['school_id'] = str(admin.school.id)
+            
+        token = jwt.encode(token_payload, settings.SECRET_KEY, algorithm='HS256')
+        
+        # Return admin info and token
+        return Response({
+            'message': 'Sign-in successful',
+            'token': token,
+            'admin_id': str(admin.id),
+            'role': admin.role,
+            'first_name': admin.first_name,
+            'last_name': admin.last_name,
+            'school_id': str(admin.school.id) if admin.school else None
+        })
+        
+    except Admin.DoesNotExist:
+        return Response({
+            'error': 'Invalid credentials'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    except Exception as e:
+        print(f"Error in admin sign in: {str(e)}")
+        traceback.print_exc()
+        return Response({
+            'error': 'An error occurred during sign in'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def admin_profile(request, pk):
+    """Get admin profile information"""
+    try:
+        admin = Admin.objects.get(pk=pk)
+        serializer = AdminSerializer(admin)
+        return Response(serializer.data)
+    except Admin.DoesNotExist:
+        return Response({
+            'error': 'Administrator not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+def admin_stats(request):
+    """Get statistics for the admin dashboard"""
+    # You can modify this based on what statistics you want to display
+    try:
+        stats = {
+            'universities': School.objects.count(),
+            'faculty': Faculty.objects.count(),
+            'students': Student.objects.count(),
+            'events': Event.objects.count(),
+            'admins': Admin.objects.count(),
+        }
+        return Response(stats)
+    except Exception as e:
+        return Response({
+            'error': f'Error fetching statistics: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def admin_recent_activity(request):
+    """Get recent activity data for admin dashboard"""
+    try:
+        # Get recent faculty registrations
+        recent_faculty = Faculty.objects.order_by('-id')[:5]
+        faculty_activity = [
+            {
+                'id': f"faculty_{faculty.id}",
+                'type': 'faculty_added',
+                'name': f"{faculty.first_name} {faculty.last_name}",
+                'university': faculty.school.name,
+                'timestamp': faculty.email_verified.isoformat() if hasattr(faculty, 'email_verified') else datetime.now().isoformat()
+            }
+            for faculty in recent_faculty
+        ]
+        
+        # Get recent events
+        recent_events = Event.objects.order_by('-date')[:5]
+        event_activity = [
+            {
+                'id': f"event_{event.id}",
+                'type': 'event_created',
+                'name': event.name,
+                'university': event.school.name,
+                'timestamp': event.date.isoformat()
+            }
+            for event in recent_events
+        ]
+        
+        # Combine and sort by timestamp
+        activities = faculty_activity + event_activity
+        activities.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return Response(activities[:10])  # Return the 10 most recent activities
+    except Exception as e:
+        return Response({
+            'error': f'Error fetching recent activity: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

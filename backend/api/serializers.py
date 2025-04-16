@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import School, Student, Faculty, Event, Class, Attendance, PendingStudent, ClassStudent, ClassEvent
+from .models import School, Student, Faculty, Event, Class, Attendance, PendingStudent, ClassStudent, ClassEvent, Admin
 
 # ---------------- School Serializer ----------------
 class SchoolSerializer(serializers.ModelSerializer):
@@ -145,3 +145,29 @@ class ClassEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClassEvent
         fields = ['id', 'class_instance', 'event']
+
+# ---------------- Admin Serializers ----------------
+class AdminSerializer(serializers.ModelSerializer):
+    school_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Admin
+        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'school', 'school_name', 'created_at', 'last_login']
+        read_only_fields = ['id', 'created_at', 'last_login']
+        
+    def get_school_name(self, obj):
+        if obj.school:
+            return obj.school.name
+        return None
+
+class AdminRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    
+    class Meta:
+        model = Admin
+        fields = ['email', 'first_name', 'last_name', 'password', 'role', 'school']
+        
+    def validate_email(self, value):
+        if Admin.objects.filter(email=value).exists():
+            raise serializers.ValidationError("An administrator with this email already exists")
+        return value
