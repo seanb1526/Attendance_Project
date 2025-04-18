@@ -131,7 +131,7 @@ def register_student(request):
                 send_mail(
                     subject="Verify your ClassAttend account",
                     message=f"Please click the following link to verify your email: {verification_url}",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=settings.DEFAULT_FROM_EMAIL,  # This correctly uses the setting
                     recipient_list=[email],
                     html_message=html_message,
                     fail_silently=False,
@@ -1059,7 +1059,7 @@ def generate_event_qr(request, event_id):
         
         # PAGE 1: Instructions
         pdf.setFont("Helvetica-Bold", 18)
-        pdf.drawString(1*inch, 10*inch, "TrueAttend - Attendance Instructions")
+        pdf.drawString(1*inch, 10*inch, "ZipAttend - Attendance Instructions")
         
         pdf.setFont("Helvetica-Bold", 14)
         pdf.drawString(1*inch, 9*inch, "Instructions:")

@@ -63,7 +63,7 @@ const AuthLanding = () => {
             fontWeight: 'bold'
           }}
         >
-          Welcome to TrueAttend
+          Welcome to ZipAttend
         </Typography>
         <Typography
           variant="h5"

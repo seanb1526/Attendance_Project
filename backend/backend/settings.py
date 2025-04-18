@@ -172,13 +172,13 @@ SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Make sure this is set for actual sending
-EMAIL_HOST = 'smtp.gmail.com'  # Or your email provider's SMTP server
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.zeptomail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # Check this environment variable is set
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # Check this environment variable is set
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@trueattend.com')
+EMAIL_HOST_USER = 'emailapikey'  # ZeptoMail API key username
+EMAIL_HOST_PASSWORD = 'wSsVR61/8xX0XPx4n2KuL+g9n1xdAg/1Q0V531Oj7yD8SKzF/cc9k0PPBACjHfcbEDJsHGZGob57yR8J0GJajdoszFxRDyiF9mqRe1U4J3x17qnvhDzDV2hUmhCBKY4NxQlomGRlFs0l+g=='
+DEFAULT_FROM_EMAIL = 'noreply@zipattend.com'  # Updated sender address
 
 # For local development, you can use the console backend to see emails in the console:
 # Uncomment this line during development to see emails in console instead of sending them

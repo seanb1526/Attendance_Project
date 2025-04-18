@@ -44,7 +44,7 @@ const About = () => {
               mb: 3
             }}
           >
-            About TrueAttend
+            About ZipAttend
           </Typography>
           <Typography
             variant="h5"
@@ -65,7 +65,7 @@ const About = () => {
               mx: 'auto'
             }}
           >
-            TrueAttend is a modern attendance tracking solution designed to streamline the process of recording and managing class attendance for both faculty and students.
+            ZipAttend is a modern attendance tracking solution designed to streamline the process of recording and managing class attendance for both faculty and students.
           </Typography>
         </Box>
 
@@ -123,7 +123,7 @@ const About = () => {
               fontSize: '0.9rem'
             }}
           >
-            © 2024 TrueAttend - Salisbury University
+            © 2024 ZipAttend - Salisbury University
           </Typography>
         </Box>
       </Container>
@@ -131,4 +131,4 @@ const About = () => {
   );
 };
 
-export default About; 
+export default About;
