@@ -2,10 +2,10 @@ import axios from 'axios';
 
 // Create a custom axios instance with baseURL
 const instance = axios.create({
-  // Change this to use the production URL when not in development
+  // Use REACT_APP_API_URL environment variable for production
   baseURL: process.env.NODE_ENV === 'development' 
     ? 'http://localhost:8000'
-    : 'https://trueattend.onrender.com',
+    : process.env.REACT_APP_API_URL || 'https://trueattend.onrender.com',
 });
 
 // Configure axios defaults
