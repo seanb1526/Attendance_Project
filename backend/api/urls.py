@@ -37,6 +37,7 @@ def db_connection_test(request):
         }, status=500)
 
 urlpatterns = [
+    path('', include(router.urls)),
     # Custom endpoints first (before router.urls)
     path('student/register/', views.register_student, name='student-register'),
     path('faculty/register/', views.register_faculty, name='faculty-register'),
@@ -64,7 +65,4 @@ urlpatterns = [
     path('admin/promote-faculty/', views.promote_faculty_to_admin, name='promote-faculty'),
     path('admin/update-role/', views.update_admin_role, name='update-admin-role'),
     path('admin/change-password/', views.change_admin_password, name='change-admin-password'),
-    
-    # Include router paths last
-    path('', include(router.urls)),  # API Endpoints for all models
 ]
