@@ -179,7 +179,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # Check this environment variable is set
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # Check this environment variable is set
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@trueattend.com') # Updated sender address
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@zipattend.com') # Changed from trueattend.com to zipattend.com
 
 # For local development, you can use the console backend to see emails in the console:
 # Uncomment this line during development to see emails in console instead of sending them
