@@ -6,7 +6,7 @@ from django.http import JsonResponse
 router = DefaultRouter()
 router.register(r'schools', views.SchoolViewSet)
 router.register(r'students', views.StudentViewSet)
-router.register(r'facultys', views.FacultyViewSet)
+router.register(r'faculty', views.FacultyViewSet)
 router.register(r'events', views.EventViewSet)
 router.register(r'classes', views.ClassViewSet)
 router.register(r'attendance', views.AttendanceViewSet)
